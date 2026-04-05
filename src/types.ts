@@ -10,10 +10,27 @@ export interface StageDefinition {
   estimatedSeconds: number;
 }
 
+// ─── Structured agent log entries (Stages 2 & 5) ────────────────────────────
+
+export type AgentLogType = 'text' | 'tool' | 'file' | 'complete' | 'error' | 'header' | 'separator';
+
+export interface AgentLogEntry {
+  type: AgentLogType;
+  agent: string;            // 'Adrian' | 'Rocky' | 'DevOps' | 'Testing' | ''
+  content: string;          // Main text content
+  toolName?: string;        // For type='tool': 'bash', 'write_file', etc.
+  filePath?: string;        // For type='file': file path
+  lineCount?: number;       // For type='file': number of lines
+  timestamp: number;        // When this entry was created (Date.now())
+}
+
+// ─── Per-stage state ─────────────────────────────────────────────────────────
+
 export interface StageState {
   id: StageId;
   status: StageStatus;
-  output: string;
+  output: string;                   // Plain text output (backward compat for buildUserMessage, VerdictCard)
+  agentLogs: AgentLogEntry[];       // Structured log entries for agent stages (2, 5)
   elapsedMs: number | null;
   errorMessage: string | null;
 }
@@ -35,6 +52,7 @@ export type PipelineAction =
   | { type: 'START'; timestamp: number }
   | { type: 'STAGE_START'; stageId: StageId }
   | { type: 'STAGE_APPEND'; stageId: StageId; text: string }
+  | { type: 'STAGE_APPEND_LOG'; stageId: StageId; entry: AgentLogEntry }
   | { type: 'STAGE_COMPLETE'; stageId: StageId; elapsedMs: number }
   | { type: 'STAGE_ERROR'; stageId: StageId; message: string }
   | { type: 'PIPELINE_COMPLETE'; totalElapsedMs: number }
@@ -100,6 +118,7 @@ export function createInitialState(): PipelineState {
       id: def.id,
       status: 'idle',
       output: '',
+      agentLogs: [],
       elapsedMs: null,
       errorMessage: null,
     };
@@ -128,7 +147,7 @@ export function pipelineReducer(
         currentStage: action.stageId,
         stages: {
           ...state.stages,
-          [action.stageId]: { ...state.stages[action.stageId], status: 'running', output: '' },
+          [action.stageId]: { ...state.stages[action.stageId], status: 'running', output: '', agentLogs: [] },
         },
       };
 
@@ -140,6 +159,18 @@ export function pipelineReducer(
           [action.stageId]: {
             ...state.stages[action.stageId],
             output: state.stages[action.stageId].output + action.text,
+          },
+        },
+      };
+
+    case 'STAGE_APPEND_LOG':
+      return {
+        ...state,
+        stages: {
+          ...state.stages,
+          [action.stageId]: {
+            ...state.stages[action.stageId],
+            agentLogs: [...state.stages[action.stageId].agentLogs, action.entry],
           },
         },
       };

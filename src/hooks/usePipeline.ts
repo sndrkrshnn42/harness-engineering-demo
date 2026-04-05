@@ -1,6 +1,6 @@
 import { useReducer, useRef, useCallback } from 'react';
 import { pipelineReducer, createInitialState, StageId, STAGE_DEFINITIONS } from '../types';
-import type { CodegenMode } from '../types';
+import type { CodegenMode, AgentLogEntry } from '../types';
 import { SYSTEM_PROMPTS, ADRIAN_CODEGEN_PROMPT, ROCKY_CODEGEN_PROMPT, DEVOPS_DEPLOY_PROMPT } from '../constants/prompts';
 
 const INFERENCE_PATH = '/api/inference';
@@ -709,6 +709,9 @@ export function usePipeline(inputSpec: string, codegenMode: CodegenMode, patToke
                   const labeled = `[${agentLabel}] ${content}`;
                   fullOutput += labeled;
                   dispatch({ type: 'STAGE_APPEND', stageId, text: labeled });
+                  dispatch({ type: 'STAGE_APPEND_LOG', stageId, entry: {
+                    type: 'text', agent: agentLabel, content, timestamp: Date.now(),
+                  }});
                 }
                 break;
               }
@@ -724,6 +727,9 @@ export function usePipeline(inputSpec: string, codegenMode: CodegenMode, patToke
                   `[${agentLabel}] \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n`;
                 fullOutput += fileMsg;
                 dispatch({ type: 'STAGE_APPEND', stageId, text: fileMsg });
+                dispatch({ type: 'STAGE_APPEND_LOG', stageId, entry: {
+                  type: 'file', agent: agentLabel, content: '', filePath, lineCount, timestamp,
+                }});
                 break;
               }
 
@@ -733,6 +739,9 @@ export function usePipeline(inputSpec: string, codegenMode: CodegenMode, patToke
                 const toolMsg = `[${agentLabel}] [Tool: ${toolName}] ${toolTitle}\n`;
                 fullOutput += toolMsg;
                 dispatch({ type: 'STAGE_APPEND', stageId, text: toolMsg });
+                dispatch({ type: 'STAGE_APPEND_LOG', stageId, entry: {
+                  type: 'tool', agent: agentLabel, content: toolTitle, toolName, timestamp: Date.now(),
+                }});
                 break;
               }
 
@@ -749,6 +758,11 @@ export function usePipeline(inputSpec: string, codegenMode: CodegenMode, patToke
                 const summary = `\n[${agentLabel}] Complete: ${totalFiles} file${totalFiles !== 1 ? 's' : ''} generated\n`;
                 fullOutput += summary;
                 dispatch({ type: 'STAGE_APPEND', stageId, text: summary });
+                dispatch({ type: 'STAGE_APPEND_LOG', stageId, entry: {
+                  type: 'complete', agent: agentLabel,
+                  content: `${totalFiles} file${totalFiles !== 1 ? 's' : ''} generated`,
+                  timestamp: Date.now(),
+                }});
                 return { output: fullOutput, success: true };
               }
 
@@ -757,6 +771,9 @@ export function usePipeline(inputSpec: string, codegenMode: CodegenMode, patToke
                 const errText = `\n[${agentLabel}] ERROR: ${errorMsg}\n`;
                 fullOutput += errText;
                 dispatch({ type: 'STAGE_APPEND', stageId, text: errText });
+                dispatch({ type: 'STAGE_APPEND_LOG', stageId, entry: {
+                  type: 'error', agent: agentLabel, content: errorMsg, timestamp: Date.now(),
+                }});
                 return { output: fullOutput, success: false };
               }
             }
@@ -798,6 +815,18 @@ export function usePipeline(inputSpec: string, codegenMode: CodegenMode, patToke
       '\u2500'.repeat(40) + '\n\n';
     fullOutput += header;
     dispatch({ type: 'STAGE_APPEND', stageId, text: header });
+    dispatch({ type: 'STAGE_APPEND_LOG', stageId, entry: {
+      type: 'header', agent: '', content: 'Rocky and Adrian - picked this up', timestamp: Date.now(),
+    }});
+    dispatch({ type: 'STAGE_APPEND_LOG', stageId, entry: {
+      type: 'text', agent: 'Adrian', content: 'FastAPI backend (api/)\n', timestamp: Date.now(),
+    }});
+    dispatch({ type: 'STAGE_APPEND_LOG', stageId, entry: {
+      type: 'text', agent: 'Rocky', content: 'React + INGKA Skapa frontend (frontend/)\n', timestamp: Date.now(),
+    }});
+    dispatch({ type: 'STAGE_APPEND_LOG', stageId, entry: {
+      type: 'separator', agent: '', content: '', timestamp: Date.now(),
+    }});
 
     abortRef.current = new AbortController();
 
@@ -869,6 +898,12 @@ export function usePipeline(inputSpec: string, codegenMode: CodegenMode, patToke
       '[Testing] Validating generated code...\n';
     fullOutput += testHeader;
     dispatch({ type: 'STAGE_APPEND', stageId, text: testHeader });
+    dispatch({ type: 'STAGE_APPEND_LOG', stageId, entry: {
+      type: 'separator', agent: '', content: '', timestamp: Date.now(),
+    }});
+    dispatch({ type: 'STAGE_APPEND_LOG', stageId, entry: {
+      type: 'text', agent: 'Testing', content: 'Validating generated code...\n', timestamp: Date.now(),
+    }});
 
     // Validate backend (Python syntax check)
     try {
@@ -884,10 +919,17 @@ export function usePipeline(inputSpec: string, codegenMode: CodegenMode, patToke
       const backendMsg = `[Testing] Backend syntax: ${backendResult.result || 'OK'}\n`;
       fullOutput += backendMsg;
       dispatch({ type: 'STAGE_APPEND', stageId, text: backendMsg });
+      dispatch({ type: 'STAGE_APPEND_LOG', stageId, entry: {
+        type: 'tool', agent: 'Testing', content: `Backend syntax: ${backendResult.result || 'OK'}`,
+        toolName: 'execute', timestamp: Date.now(),
+      }});
     } catch {
       const msg = '[Testing] Backend validation skipped (not available)\n';
       fullOutput += msg;
       dispatch({ type: 'STAGE_APPEND', stageId, text: msg });
+      dispatch({ type: 'STAGE_APPEND_LOG', stageId, entry: {
+        type: 'text', agent: 'Testing', content: 'Backend validation skipped (not available)\n', timestamp: Date.now(),
+      }});
     }
 
     // Validate frontend (check package.json exists and attempt syntax check)
@@ -904,10 +946,17 @@ export function usePipeline(inputSpec: string, codegenMode: CodegenMode, patToke
       const frontendMsg = `[Testing] Frontend structure: ${frontendResult.result || 'OK'}\n`;
       fullOutput += frontendMsg;
       dispatch({ type: 'STAGE_APPEND', stageId, text: frontendMsg });
+      dispatch({ type: 'STAGE_APPEND_LOG', stageId, entry: {
+        type: 'tool', agent: 'Testing', content: `Frontend structure: ${frontendResult.result || 'OK'}`,
+        toolName: 'execute', timestamp: Date.now(),
+      }});
     } catch {
       const msg = '[Testing] Frontend validation skipped (not available)\n';
       fullOutput += msg;
       dispatch({ type: 'STAGE_APPEND', stageId, text: msg });
+      dispatch({ type: 'STAGE_APPEND_LOG', stageId, entry: {
+        type: 'text', agent: 'Testing', content: 'Frontend validation skipped (not available)\n', timestamp: Date.now(),
+      }});
     }
 
     // List all generated files
@@ -923,6 +972,9 @@ export function usePipeline(inputSpec: string, codegenMode: CodegenMode, patToke
       const listMsg = `[Testing] Total files in workspace: ${fileCount}\n`;
       fullOutput += listMsg;
       dispatch({ type: 'STAGE_APPEND', stageId, text: listMsg });
+      dispatch({ type: 'STAGE_APPEND_LOG', stageId, entry: {
+        type: 'text', agent: 'Testing', content: `Total files in workspace: ${fileCount}\n`, timestamp: Date.now(),
+      }});
     } catch {
       // Skip silently
     }
@@ -931,6 +983,9 @@ export function usePipeline(inputSpec: string, codegenMode: CodegenMode, patToke
       '\u2500'.repeat(40) + '\n';
     fullOutput += testFooter;
     dispatch({ type: 'STAGE_APPEND', stageId, text: testFooter });
+    dispatch({ type: 'STAGE_APPEND_LOG', stageId, entry: {
+      type: 'complete', agent: 'Testing', content: 'Validation complete', timestamp: Date.now(),
+    }});
 
     const elapsedMs = Date.now() - stageStart;
     dispatch({ type: 'STAGE_COMPLETE', stageId, elapsedMs });
@@ -967,6 +1022,12 @@ export function usePipeline(inputSpec: string, codegenMode: CodegenMode, patToke
       '\u2500'.repeat(40) + '\n\n';
     let fullOutput = header;
     dispatch({ type: 'STAGE_APPEND', stageId, text: header });
+    dispatch({ type: 'STAGE_APPEND_LOG', stageId, entry: {
+      type: 'header', agent: '', content: 'DevOps Agent — Docker Build & Deploy', timestamp: Date.now(),
+    }});
+    dispatch({ type: 'STAGE_APPEND_LOG', stageId, entry: {
+      type: 'separator', agent: '', content: '', timestamp: Date.now(),
+    }});
 
     // Build the deploy prompt: system instructions + context from prior stages
     const deployPrompt =

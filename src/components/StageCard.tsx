@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { StageDefinition, StageState } from '../types';
 import { MarkdownOutput } from './MarkdownOutput';
+import { AgentLogOutput } from './AgentLogOutput';
 import Status from '@ingka/status';
 import Pill from '@ingka/pill';
 import InlineMessage from '@ingka/inline-message';
@@ -38,7 +39,7 @@ export function StageCard({ definition, stageState, onRetry }: Props) {
     if (outputRef.current && stageState.status === 'running') {
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
-  }, [stageState.output, stageState.status]);
+  }, [stageState.output, stageState.agentLogs.length, stageState.status]);
 
   // Detect transition to complete for pulse animation
   useEffect(() => {
@@ -58,6 +59,7 @@ export function StageCard({ definition, stageState, onRetry }: Props) {
   const isComplete = stageState.status === 'complete';
   const isError = stageState.status === 'error';
   const hasOutput = stageState.output.length > 0;
+  const hasAgentLogs = stageState.agentLogs.length > 0;
 
   return (
     <div className="relative">
@@ -160,7 +162,7 @@ export function StageCard({ definition, stageState, onRetry }: Props) {
                     </Loading>
 
                     {/* Toggle to show raw logs */}
-                    {hasOutput && (
+                    {(hasOutput || hasAgentLogs) && (
                       <div className="mt-2">
                         <button
                           className="text-[10px] text-skapa-text-3 hover:text-skapa-text-1 underline underline-offset-2 transition-colors"
@@ -173,7 +175,11 @@ export function StageCard({ definition, stageState, onRetry }: Props) {
                             ref={outputRef}
                             className="mt-1 max-h-48 overflow-y-auto"
                           >
-                            <MarkdownOutput content={stageState.output} />
+                            {hasAgentLogs ? (
+                              <AgentLogOutput entries={stageState.agentLogs} />
+                            ) : (
+                              <MarkdownOutput content={stageState.output} />
+                            )}
                           </div>
                         )}
                       </div>
@@ -188,7 +194,11 @@ export function StageCard({ definition, stageState, onRetry }: Props) {
                       px-4 py-3 bg-skapa-neutral-2/50
                     `}
                   >
-                    <MarkdownOutput content={stageState.output} />
+                    {isAgentStage && hasAgentLogs ? (
+                      <AgentLogOutput entries={stageState.agentLogs} />
+                    ) : (
+                      <MarkdownOutput content={stageState.output} />
+                    )}
                     {/* Blinking cursor while running */}
                     {isRunning && (
                       <span className="animate-pulse" style={{ color: 'var(--skapa-brand-blue)' }}>&#9611;</span>
