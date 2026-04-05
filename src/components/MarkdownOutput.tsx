@@ -1,7 +1,7 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { Components } from 'react-markdown';
 
 interface Props {
@@ -9,14 +9,14 @@ interface Props {
 }
 
 /**
- * Custom style overrides for SyntaxHighlighter to blend with our zinc-950 theme.
- * vscDarkPlus uses #1e1e1e background — we override to match our bg-zinc-950.
+ * Custom style overrides for SyntaxHighlighter to blend with Skapa neutral-2 theme.
+ * Using `vs` (light) base theme to match Skapa's light design.
  */
 const codeThemeOverrides: Record<string, React.CSSProperties> = {
-  ...vscDarkPlus,
+  ...vs,
   'pre[class*="language-"]': {
-    ...(vscDarkPlus['pre[class*="language-"]'] as React.CSSProperties | undefined),
-    background: 'rgb(9 9 11)', // zinc-950
+    ...(vs['pre[class*="language-"]'] as React.CSSProperties | undefined),
+    background: 'rgb(245 245 245)', // skapa-neutral-2
     margin: 0,
     padding: '0.5rem 0.75rem',
     fontSize: '0.7rem',
@@ -24,7 +24,7 @@ const codeThemeOverrides: Record<string, React.CSSProperties> = {
     borderRadius: '0.375rem',
   },
   'code[class*="language-"]': {
-    ...(vscDarkPlus['code[class*="language-"]'] as React.CSSProperties | undefined),
+    ...(vs['code[class*="language-"]'] as React.CSSProperties | undefined),
     background: 'transparent',
     fontSize: '0.7rem',
     lineHeight: '1.5',
@@ -53,11 +53,11 @@ function resolveLanguage(lang: string | undefined): string {
 }
 
 /**
- * Custom renderers for react-markdown, styled to match our dark terminal theme.
+ * Custom renderers for react-markdown, styled with Skapa design tokens.
  */
 const markdownComponents: Components = {
 
-  // ─── Code blocks (fenced) and inline code ──────────────────────────────
+  // --- Code blocks (fenced) and inline code ---
   code({ className, children, ...rest }) {
     const match = /language-(\w+)/.exec(className || '');
     const isBlock = String(children).includes('\n') || match;
@@ -78,7 +78,8 @@ const markdownComponents: Components = {
     // Inline code
     return (
       <code
-        className="bg-zinc-800 text-violet-300 px-1 py-0.5 rounded text-[0.7rem] font-mono"
+        className="bg-skapa-neutral-2 px-1 py-0.5 rounded text-[0.7rem] font-mono"
+        style={{ color: 'var(--skapa-brand-blue)' }}
         {...rest}
       >
         {children}
@@ -86,118 +87,120 @@ const markdownComponents: Components = {
     );
   },
 
-  // ─── Headings ──────────────────────────────────────────────────────────
+  // --- Headings ---
   h1({ children }) {
     return (
-      <h1 className="text-sm font-bold text-white mt-3 mb-1.5 border-b border-zinc-800 pb-1">
+      <h1 className="text-sm font-bold text-skapa-text-1 mt-3 mb-1.5 border-b border-skapa-neutral-3 pb-1">
         {children}
       </h1>
     );
   },
   h2({ children }) {
     return (
-      <h2 className="text-xs font-bold text-white mt-3 mb-1 border-b border-zinc-800 pb-0.5">
+      <h2 className="text-xs font-bold text-skapa-text-1 mt-3 mb-1 border-b border-skapa-neutral-3 pb-0.5">
         {children}
       </h2>
     );
   },
   h3({ children }) {
     return (
-      <h3 className="text-xs font-bold text-zinc-200 mt-2 mb-1">
+      <h3 className="text-xs font-bold text-skapa-text-2 mt-2 mb-1">
         {children}
       </h3>
     );
   },
   h4({ children }) {
     return (
-      <h4 className="text-xs font-semibold text-zinc-300 mt-1.5 mb-0.5">
+      <h4 className="text-xs font-semibold text-skapa-text-2 mt-1.5 mb-0.5">
         {children}
       </h4>
     );
   },
 
-  // ─── Paragraphs ────────────────────────────────────────────────────────
+  // --- Paragraphs ---
   p({ children }) {
     return (
-      <p className="text-xs text-zinc-300 leading-relaxed my-1">
+      <p className="text-xs text-skapa-text-2 leading-relaxed my-1">
         {children}
       </p>
     );
   },
 
-  // ─── Lists ─────────────────────────────────────────────────────────────
+  // --- Lists ---
   ul({ children }) {
-    return <ul className="text-xs text-zinc-300 list-disc pl-4 my-1 space-y-0.5">{children}</ul>;
+    return <ul className="text-xs text-skapa-text-2 list-disc pl-4 my-1 space-y-0.5">{children}</ul>;
   },
   ol({ children }) {
-    return <ol className="text-xs text-zinc-300 list-decimal pl-4 my-1 space-y-0.5">{children}</ol>;
+    return <ol className="text-xs text-skapa-text-2 list-decimal pl-4 my-1 space-y-0.5">{children}</ol>;
   },
   li({ children }) {
-    return <li className="text-xs text-zinc-300 leading-relaxed">{children}</li>;
+    return <li className="text-xs text-skapa-text-2 leading-relaxed">{children}</li>;
   },
 
-  // ─── Tables ────────────────────────────────────────────────────────────
+  // --- Tables ---
   table({ children }) {
     return (
       <div className="overflow-x-auto my-2">
-        <table className="text-[10px] font-mono border-collapse w-full">
+        <table className="text-[10px] border-collapse w-full">
           {children}
         </table>
       </div>
     );
   },
   thead({ children }) {
-    return <thead className="border-b border-zinc-700">{children}</thead>;
+    return <thead className="border-b border-skapa-neutral-4">{children}</thead>;
   },
   tbody({ children }) {
     return <tbody>{children}</tbody>;
   },
   tr({ children }) {
-    return <tr className="border-b border-zinc-800/50">{children}</tr>;
+    return <tr className="border-b border-skapa-neutral-3">{children}</tr>;
   },
   th({ children }) {
     return (
-      <th className="text-left px-2 py-1 text-zinc-400 font-semibold whitespace-nowrap">
+      <th className="text-left px-2 py-1 text-skapa-text-2 font-semibold whitespace-nowrap">
         {children}
       </th>
     );
   },
   td({ children }) {
     return (
-      <td className="px-2 py-1 text-zinc-300 whitespace-pre-wrap">
+      <td className="px-2 py-1 text-skapa-text-2 whitespace-pre-wrap">
         {children}
       </td>
     );
   },
 
-  // ─── Horizontal rule ──────────────────────────────────────────────────
+  // --- Horizontal rule ---
   hr() {
-    return <hr className="border-zinc-800 my-2" />;
+    return <hr className="border-skapa-neutral-3 my-2" />;
   },
 
-  // ─── Blockquote ────────────────────────────────────────────────────────
+  // --- Blockquote ---
   blockquote({ children }) {
     return (
-      <blockquote className="border-l-2 border-violet-500/40 pl-3 my-1.5 text-zinc-400 italic">
+      <blockquote className="border-l-2 pl-3 my-1.5 text-skapa-text-3 italic"
+                   style={{ borderColor: 'var(--skapa-brand-blue)' }}>
         {children}
       </blockquote>
     );
   },
 
-  // ─── Strong / Emphasis ─────────────────────────────────────────────────
+  // --- Strong / Emphasis ---
   strong({ children }) {
-    return <strong className="text-white font-bold">{children}</strong>;
+    return <strong className="text-skapa-text-1 font-bold">{children}</strong>;
   },
   em({ children }) {
-    return <em className="text-zinc-200 italic">{children}</em>;
+    return <em className="text-skapa-text-2 italic">{children}</em>;
   },
 
-  // ─── Links ─────────────────────────────────────────────────────────────
+  // --- Links ---
   a({ children, href }) {
     return (
       <a
         href={href}
-        className="text-violet-400 hover:text-violet-300 underline underline-offset-2"
+        className="underline underline-offset-2"
+        style={{ color: 'var(--skapa-brand-blue)' }}
         target="_blank"
         rel="noopener noreferrer"
       >
@@ -206,10 +209,10 @@ const markdownComponents: Components = {
     );
   },
 
-  // ─── Pre (wrapper for code blocks) ─────────────────────────────────────
+  // --- Pre (wrapper for code blocks) ---
   pre({ children }) {
     return (
-      <div className="my-1.5 rounded-md overflow-hidden border border-zinc-800">
+      <div className="my-1.5 rounded-skapa-s overflow-hidden border border-skapa-neutral-3">
         {children}
       </div>
     );
@@ -219,11 +222,11 @@ const markdownComponents: Components = {
 /**
  * Renders markdown content with syntax-highlighted code blocks.
  * Designed for streaming: re-renders efficiently as content appends.
- * Styled to match the application's dark zinc-950 terminal aesthetic.
+ * Styled with Skapa design tokens for clean Scandinavian aesthetics.
  */
 export function MarkdownOutput({ content }: Props) {
   return (
-    <div className="markdown-output font-mono">
+    <div className="markdown-output">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
         {content}
       </ReactMarkdown>

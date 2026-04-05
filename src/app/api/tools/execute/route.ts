@@ -1,15 +1,17 @@
 import { NextRequest } from 'next/server';
 import { exec } from 'child_process';
+import * as path from 'path';
+import * as os from 'os';
 import { getWorkspaceDir } from '../../../../lib/workspace';
 
-const EXEC_TIMEOUT_MS = 30_000;
+const EXEC_TIMEOUT_MS = 180_000;
 
 /**
  * POST /api/tools/execute
  * Body: { workspaceId: string, command: string }
  *
  * Executes a shell command sandboxed to the workspace directory.
- * 30-second timeout. stdout + stderr returned.
+ * 180-second timeout. stdout + stderr returned.
  */
 export async function POST(request: NextRequest): Promise<Response> {
   let body: { workspaceId?: string; command?: string };
@@ -53,7 +55,12 @@ function runCommand(command: string, cwd: string): Promise<string> {
         cwd,
         timeout: EXEC_TIMEOUT_MS,
         maxBuffer: 1024 * 1024, // 1MB
-        env: { ...process.env, HOME: cwd, USERPROFILE: cwd },
+        env: {
+          ...process.env,
+          HOME: cwd,
+          USERPROFILE: cwd,
+          KUBECONFIG: process.env.KUBECONFIG_PATH || path.join(os.homedir(), '.kube', 'config'),
+        },
       },
       (error, stdout, stderr) => {
         if (error) {

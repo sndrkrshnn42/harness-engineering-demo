@@ -139,7 +139,7 @@ failures gracefully.
 - **Backend:** Node.js 20 LTS with Express.js, deployed as containerised microservices
 - **Database:** PostgreSQL 16 (primary data store), Redis 7.2 (caching, pub/sub for WebSocket fan-out)
 - **Search:** Elasticsearch 8.x (alert indexing and full-text search)
-- **Deployment:** Kubernetes 1.29+ (AKS), Helm 3 charts
+- **Deployment:** Kubernetes 1.29+ (GKE), standalone K8s manifests
 - **Authentication:** Azure Entra ID (OAuth 2.0 / OIDC), JWT bearer tokens
 - **Observability:** OpenTelemetry SDK, Prometheus metrics, Grafana dashboards
 

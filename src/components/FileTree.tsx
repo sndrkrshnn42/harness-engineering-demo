@@ -1,4 +1,12 @@
 import { useMemo, useState, useCallback } from 'react';
+import Accordion, { AccordionItem } from '@ingka/accordion';
+import SSRIcon from '@ingka/ssr-icon';
+import folderIcon from '@ingka/ssr-icon/paths/folder';
+import documentIcon from '@ingka/ssr-icon/paths/document';
+import codeIcon from '@ingka/ssr-icon/paths/chevron-left-slash-chevron-right';
+import gearIcon from '@ingka/ssr-icon/paths/gear';
+import Loading from '@ingka/loading';
+import LoadingBall from '@ingka/loading/LoadingBall';
 import type { AgentFile } from '../hooks/usePipeline';
 
 interface Props {
@@ -16,22 +24,30 @@ interface TreeNode {
   depth: number;
 }
 
-/** File extension to icon/label map */
-function getFileIcon(name: string): string {
-  if (name.endsWith('.ts') || name.endsWith('.tsx')) return 'TS';
-  if (name.endsWith('.js') || name.endsWith('.jsx')) return 'JS';
-  if (name.endsWith('.py')) return 'PY';
-  if (name.endsWith('.yaml') || name.endsWith('.yml')) return 'YM';
-  if (name.endsWith('.json')) return 'JS';
-  if (name.endsWith('.css') || name.endsWith('.scss')) return 'CS';
-  if (name.endsWith('.html')) return 'HT';
-  if (name.endsWith('.md')) return 'MD';
-  if (name.endsWith('.sql')) return 'SQ';
-  if (name.endsWith('.env')) return 'EN';
-  if (name.endsWith('.toml')) return 'TO';
-  if (name.endsWith('.lock')) return 'LK';
-  if (name.endsWith('.prisma')) return 'PR';
-  return '··';
+/** Pick the appropriate SSR icon paths function based on file extension */
+function getFileIconPaths(name: string): (prefix?: string) => React.SVGProps<SVGElement>[] {
+  const lower = name.toLowerCase();
+  // Code files
+  if (
+    lower.endsWith('.ts') || lower.endsWith('.tsx') ||
+    lower.endsWith('.js') || lower.endsWith('.jsx') ||
+    lower.endsWith('.py') || lower.endsWith('.css') ||
+    lower.endsWith('.scss') || lower.endsWith('.html') ||
+    lower.endsWith('.sql') || lower.endsWith('.prisma')
+  ) {
+    return codeIcon;
+  }
+  // Config files
+  if (
+    lower.endsWith('.yaml') || lower.endsWith('.yml') ||
+    lower.endsWith('.json') || lower.endsWith('.toml') ||
+    lower.endsWith('.env') || lower.endsWith('.lock') ||
+    lower.endsWith('.cfg') || lower.endsWith('.ini')
+  ) {
+    return gearIcon;
+  }
+  // Default: generic document
+  return documentIcon;
 }
 
 /** Build a tree structure from flat file paths */
@@ -66,16 +82,26 @@ function buildTree(files: AgentFile[]): TreeNode[] {
   return root;
 }
 
+/** Recursively count all descendant nodes (files + subdirs) */
+function countDescendants(node: TreeNode): number {
+  let count = node.children.length;
+  for (const child of node.children) {
+    if (child.isDir) {
+      count += countDescendants(child);
+    }
+  }
+  return count;
+}
+
 function sortNodes(nodes: TreeNode[]): TreeNode[] {
   return [...nodes].sort((a, b) => {
-    // Directories first
     if (a.isDir && !b.isDir) return -1;
     if (!a.isDir && b.isDir) return 1;
     return a.name.localeCompare(b.name);
   }).map(n => ({ ...n, children: sortNodes(n.children) }));
 }
 
-// ─── File Content State ─────────────────────────────────────────────────────
+// --- File Content State ---
 
 interface FileContentCache {
   [path: string]: {
@@ -84,84 +110,63 @@ interface FileContentCache {
   };
 }
 
-// ─── TreeNodeItem with Collapsible Content ──────────────────────────────────
+// --- FileItem: a single file row with click-to-expand content ---
 
-interface TreeNodeItemProps {
+interface FileItemProps {
   node: TreeNode;
-  isLast: boolean;
   expandedFiles: Set<string>;
   loadingFiles: Set<string>;
   contentCache: FileContentCache;
   onFileClick: (path: string) => void;
 }
 
-function TreeNodeItem({
-  node, isLast, expandedFiles, loadingFiles, contentCache, onFileClick,
-}: TreeNodeItemProps) {
-  const prefix = isLast ? '\u2514\u2500' : '\u251C\u2500';
-  const icon = node.isDir ? '\u25B8' : getFileIcon(node.name);
-  const isFile = !node.isDir;
-  const isExpanded = isFile && expandedFiles.has(node.path);
-  const isLoading = isFile && loadingFiles.has(node.path);
-  const cached = isFile ? contentCache[node.path] : undefined;
+function FileItem({
+  node, expandedFiles, loadingFiles, contentCache, onFileClick,
+}: FileItemProps) {
+  const isExpanded = expandedFiles.has(node.path);
+  const isLoading = loadingFiles.has(node.path);
+  const cached = contentCache[node.path];
 
   return (
-    <div>
+    <div className="animate-fade-in">
       <div
-        className={`
-          flex items-center gap-1 py-px animate-fade-in
-          ${isFile ? 'cursor-pointer hover:bg-zinc-800/50 rounded px-0.5 -mx-0.5' : ''}
-        `}
-        onClick={isFile ? () => onFileClick(node.path) : undefined}
-        role={isFile ? 'button' : undefined}
-        tabIndex={isFile ? 0 : undefined}
-        onKeyDown={isFile ? (e) => {
+        className="flex items-center gap-2 py-1 px-2 cursor-pointer hover:bg-skapa-neutral-2 rounded"
+        onClick={() => onFileClick(node.path)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             onFileClick(node.path);
           }
-        } : undefined}
+        }}
       >
-        <span className="text-zinc-700 select-none">{prefix}</span>
-        <span className={`
-          text-[10px] font-mono w-4 text-center
-          ${node.isDir ? 'text-violet-500' : 'text-zinc-600'}
-        `}>
-          {icon}
-        </span>
-        <span className={`
-          text-xs font-mono
-          ${node.isDir ? 'text-violet-400' : 'text-zinc-300'}
-        `}>
-          {node.name}
-        </span>
+        <SSRIcon paths={getFileIconPaths(node.name)} className="w-4 h-4 flex-shrink-0 text-skapa-text-3" />
+        <span className="text-xs text-skapa-text-1">{node.name}</span>
         {node.lineCount !== undefined && (
-          <span className="text-[10px] font-mono text-zinc-600 ml-1">
-            {node.lineCount}L
-          </span>
+          <span className="text-[10px] text-skapa-text-3 ml-1">{node.lineCount}L</span>
         )}
-        {isFile && (
-          <span className="text-[10px] font-mono text-zinc-700 ml-auto select-none">
-            {isLoading ? '...' : isExpanded ? '\u25BE' : '\u25B8'}
-          </span>
-        )}
+        <span className="text-[10px] text-skapa-text-4 ml-auto select-none">
+          {isLoading ? '...' : isExpanded ? '\u25BE' : '\u25B8'}
+        </span>
       </div>
 
       {/* Expanded file content */}
       {isExpanded && (
         <div className="ml-6 mt-0.5 mb-1">
           {isLoading ? (
-            <div className="text-[10px] font-mono text-zinc-600 py-1 px-2">
-              Loading...
-            </div>
+            <Loading text="Loading file...">
+              <LoadingBall size="small" color="secondary" />
+            </Loading>
           ) : cached?.status === 'error' ? (
-            <div className="text-[10px] font-mono text-red-400/70 py-1 px-2 border border-red-900/30 rounded bg-red-950/20">
+            <div className="text-[10px] py-1 px-2 border border-skapa-negative/30 rounded-skapa-s"
+                 style={{ color: 'var(--skapa-negative)', backgroundColor: 'rgba(224, 7, 81, 0.05)' }}>
               {cached.content}
             </div>
           ) : cached?.status === 'loaded' ? (
             <pre className="
-              text-[10px] font-mono leading-relaxed text-zinc-400
-              bg-zinc-950 border border-zinc-800 rounded
+              text-[10px] font-mono leading-relaxed text-skapa-text-2
+              bg-skapa-neutral-2 border border-skapa-neutral-3 rounded-skapa-s
               px-2 py-1.5 overflow-x-auto max-h-60
               whitespace-pre-wrap break-words
             ">
@@ -170,27 +175,73 @@ function TreeNodeItem({
           ) : null}
         </div>
       )}
-
-      {node.children.length > 0 && (
-        <div className="ml-3">
-          {sortNodes(node.children).map((child, i, arr) => (
-            <TreeNodeItem
-              key={child.path}
-              node={child}
-              isLast={i === arr.length - 1}
-              expandedFiles={expandedFiles}
-              loadingFiles={loadingFiles}
-              contentCache={contentCache}
-              onFileClick={onFileClick}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
 
-// ─── FileTree Component ─────────────────────────────────────────────────────
+// --- DirNode: recursive directory rendering with Accordion ---
+
+interface DirNodeProps {
+  node: TreeNode;
+  expandedFiles: Set<string>;
+  loadingFiles: Set<string>;
+  contentCache: FileContentCache;
+  onFileClick: (path: string) => void;
+}
+
+function DirNode({
+  node, expandedFiles, loadingFiles, contentCache, onFileClick,
+}: DirNodeProps) {
+  const sorted = useMemo(() => sortNodes(node.children), [node.children]);
+  const dirs = sorted.filter(n => n.isDir);
+  const files = sorted.filter(n => !n.isDir);
+
+  const title = (
+    <span className="flex items-center gap-2">
+      <SSRIcon paths={folderIcon} className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--skapa-brand-blue)' }} />
+      <span className="text-xs" style={{ color: 'var(--skapa-brand-blue)' }}>{node.name}</span>
+      <span className="text-[10px] text-skapa-text-4">{countDescendants(node)}</span>
+    </span>
+  );
+
+  return (
+    <Accordion collapsible size="small">
+      <AccordionItem
+        id={`dir-${node.path}`}
+        title={title}
+        open
+        subtle
+      >
+        <div style={{ paddingLeft: node.depth > 0 ? '1rem' : undefined }}>
+        {/* Nested directories first */}
+        {dirs.map(child => (
+          <DirNode
+            key={child.path}
+            node={child}
+            expandedFiles={expandedFiles}
+            loadingFiles={loadingFiles}
+            contentCache={contentCache}
+            onFileClick={onFileClick}
+          />
+        ))}
+        {/* Then files */}
+        {files.map(child => (
+          <FileItem
+            key={child.path}
+            node={child}
+            expandedFiles={expandedFiles}
+            loadingFiles={loadingFiles}
+            contentCache={contentCache}
+            onFileClick={onFileClick}
+          />
+        ))}
+        </div>
+      </AccordionItem>
+    </Accordion>
+  );
+}
+
+// --- FileTree Component ---
 
 export function FileTree({ files, isVisible, workspaceId }: Props) {
   const tree = useMemo(() => sortNodes(buildTree(files)), [files]);
@@ -265,30 +316,38 @@ export function FileTree({ files, isVisible, workspaceId }: Props) {
 
   if (!isVisible || files.length === 0) return null;
 
+  // Separate top-level dirs and files
+  const dirs = tree.filter(n => n.isDir);
+  const topFiles = tree.filter(n => !n.isDir);
+
   return (
-    <div className="border border-zinc-800 rounded-lg bg-zinc-950 px-3 py-2 mt-1 mb-1">
+    <div className="border border-skapa-neutral-3 rounded-skapa-m bg-skapa-neutral-1 px-3 py-2">
       <div className="flex items-center gap-2 mb-1.5">
-        <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-wider">
+        <SSRIcon paths={folderIcon} className="w-4 h-4" style={{ color: 'var(--skapa-brand-blue)' }} />
+        <span className="text-[10px] text-skapa-text-3 uppercase tracking-wider">
           Generated Files
         </span>
-        <span className="text-[10px] font-mono text-violet-500">
+        <span className="text-[10px]" style={{ color: 'var(--skapa-brand-blue)' }}>
           {files.length}
         </span>
-        {expandedFiles.size > 0 && (
-          <button
-            onClick={() => setExpandedFiles(new Set())}
-            className="text-[10px] font-mono text-zinc-600 hover:text-zinc-400 ml-auto transition-colors"
-          >
-            Collapse all
-          </button>
-        )}
       </div>
       <div className="max-h-72 overflow-y-auto">
-        {tree.map((node, i) => (
-          <TreeNodeItem
+        {/* Top-level directories */}
+        {dirs.map(node => (
+          <DirNode
             key={node.path}
             node={node}
-            isLast={i === tree.length - 1}
+            expandedFiles={expandedFiles}
+            loadingFiles={loadingFiles}
+            contentCache={contentCache}
+            onFileClick={handleFileClick}
+          />
+        ))}
+        {/* Top-level files (if any) */}
+        {topFiles.map(node => (
+          <FileItem
+            key={node.path}
+            node={node}
             expandedFiles={expandedFiles}
             loadingFiles={loadingFiles}
             contentCache={contentCache}

@@ -1,14 +1,14 @@
 /**
- * POST /api/codegen
+ * POST /api/deploy
  *
- * OpenCode SDK-powered code generation endpoint.
- * Spawns/reuses an OpenCode server, creates a session in the workspace directory,
- * sends the codegen prompt, and relays events to the client as SSE.
+ * OpenCode SDK-powered DevOps deploy agent endpoint.
+ * Spawns/reuses an OpenCode server, creates a session in the workspace root,
+ * sends the deploy prompt, and relays events to the client as SSE.
  *
- * Supports dual-agent mode: when `agent` and `subdir` are provided, the session
- * is scoped to a subdirectory within the workspace (e.g., api/ or frontend/).
+ * Unlike /api/codegen, this operates on the full workspace (no subdir scoping)
+ * since the deploy agent needs access to api/, frontend/, and k8s/ directories.
  *
- * Request body: { workspaceId: string, prompt: string, agent?: string, subdir?: string }
+ * Request body: { workspaceId: string, prompt: string }
  * Response: text/event-stream with event types: text, file, tool, complete, error
  */
 
@@ -62,19 +62,19 @@ async function listFilesRecursive(dir: string, base: string = ''): Promise<Array
 }
 
 export async function POST(request: NextRequest): Promise<Response> {
-  let body: { workspaceId: string; prompt: string; agent?: string; subdir?: string };
+  let body: { workspaceId: string; prompt: string };
   try {
     body = await request.json();
   } catch {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { workspaceId, prompt, agent, subdir } = body;
+  const { workspaceId, prompt } = body;
   if (!workspaceId || !prompt) {
     return Response.json({ error: 'workspaceId and prompt are required' }, { status: 400 });
   }
 
-  // Resolve workspace directory
+  // Resolve workspace directory — deploy agent operates on the full workspace root
   let workspaceDir: string;
   try {
     workspaceDir = getWorkspaceDir(workspaceId);
@@ -83,25 +83,8 @@ export async function POST(request: NextRequest): Promise<Response> {
     return Response.json({ error: message }, { status: 404 });
   }
 
-  // If subdir is provided, scope the session to that subdirectory
-  let sessionDir = workspaceDir;
-  if (subdir) {
-    // Validate subdir to prevent path traversal
-    const normalizedSubdir = path.normalize(subdir).replace(/^(\.\.(\/|\\|$))+/, '');
-    if (normalizedSubdir.includes('..')) {
-      return Response.json({ error: 'Invalid subdir path' }, { status: 400 });
-    }
-    sessionDir = path.join(workspaceDir, normalizedSubdir);
-    // Ensure the subdirectory exists
-    try {
-      await fs.mkdir(sessionDir, { recursive: true });
-    } catch {
-      return Response.json({ error: `Failed to create subdir: ${normalizedSubdir}` }, { status: 500 });
-    }
-  }
-
-  const agentLabel = agent || 'opencode';
-  const sessionTitle = agent ? `Harness Codegen - ${agent}` : 'Harness Codegen';
+  const agentLabel = 'devops';
+  const sessionTitle = 'Harness Deploy - DevOps Agent';
 
   // Create SSE stream
   const encoder = new TextEncoder();
@@ -118,14 +101,14 @@ export async function POST(request: NextRequest): Promise<Response> {
 
       try {
         // 1. Get OpenCode client (starts server if needed)
-        sendEvent('text', { content: `[${agentLabel}] Connecting to server...\n` });
+        sendEvent('text', { content: `Connecting to server...\n` });
         const client = await ensureOpenCodeServer();
 
-        // 2. Create a session pointed at the session directory (workspace or subdir)
-        sendEvent('text', { content: `[${agentLabel}] Creating session...\n` });
+        // 2. Create a session pointed at the workspace root
+        sendEvent('text', { content: `Creating deploy session...\n` });
         const sessionResult = await client.session.create({
           body: { title: sessionTitle },
-          query: { directory: sessionDir },
+          query: { directory: workspaceDir },
         });
 
         if (!sessionResult.data) {
@@ -135,11 +118,11 @@ export async function POST(request: NextRequest): Promise<Response> {
         }
 
         const sessionId = sessionResult.data.id;
-        sendEvent('text', { content: `[${agentLabel}] Session ${sessionId.substring(0, 8)}... ready\n` });
+        sendEvent('text', { content: `Session ${sessionId.substring(0, 8)}... ready\n` });
 
         // 3. Subscribe to events BEFORE sending the prompt
         const eventResult = await client.event.subscribe({
-          query: { directory: sessionDir },
+          query: { directory: workspaceDir },
         });
 
         if (!eventResult.stream) {
@@ -149,7 +132,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         }
 
         // 4. Send the prompt asynchronously
-        sendEvent('text', { content: `[${agentLabel}] Sending codegen prompt...\n` });
+        sendEvent('text', { content: `Sending deploy prompt...\n` });
         sendEvent('text', { content: '\u2500'.repeat(40) + '\n\n' });
 
         await client.session.promptAsync({
@@ -157,7 +140,7 @@ export async function POST(request: NextRequest): Promise<Response> {
           body: {
             parts: [{ type: 'text', text: prompt }],
           },
-          query: { directory: sessionDir },
+          query: { directory: workspaceDir },
         });
 
         // 5. Process events from the stream
@@ -165,7 +148,6 @@ export async function POST(request: NextRequest): Promise<Response> {
 
         try {
           for await (const event of eventResult.stream) {
-            // Type-narrow based on event.type
             switch (event.type) {
               case 'message.part.updated': {
                 const part = event.properties.part;
@@ -195,7 +177,6 @@ export async function POST(request: NextRequest): Promise<Response> {
               case 'file.edited': {
                 const filePath = event.properties.file;
                 // Convert absolute path to relative path within workspace
-                // Use workspaceDir (not sessionDir) so paths include the subdir prefix
                 let relativePath = filePath;
                 if (filePath.startsWith(workspaceDir)) {
                   relativePath = filePath
@@ -225,7 +206,7 @@ export async function POST(request: NextRequest): Promise<Response> {
               }
 
               case 'permission.updated': {
-                // Auto-approve all permissions for codegen (file writes, shell, etc.)
+                // Auto-approve all permissions for deploy (shell execution, file writes, etc.)
                 const permission = event.properties;
                 if (permission.sessionID === sessionId) {
                   try {
@@ -234,7 +215,7 @@ export async function POST(request: NextRequest): Promise<Response> {
                       body: { response: 'always' },
                     });
                     sendEvent('text', {
-                      content: `[${agentLabel}] [Auto-approved: ${permission.title}]\n`,
+                      content: `[Auto-approved: ${permission.title}]\n`,
                     });
                   } catch {
                     // Permission might have been resolved already
@@ -247,23 +228,19 @@ export async function POST(request: NextRequest): Promise<Response> {
                 // Only react to our session going idle
                 if (event.properties.sessionID !== sessionId) break;
 
-                // Session complete — list all generated files
+                // Session complete — list all files in workspace
                 sendEvent('text', { content: '\n' + '\u2500'.repeat(40) + '\n' });
-                sendEvent('text', { content: `[${agentLabel}] Code generation complete.\n` });
+                sendEvent('text', { content: `Deploy complete.\n` });
 
-                // List files from the session directory
-                const files = await listFilesRecursive(sessionDir);
-                // If using subdir, prefix paths so FileTree shows correct structure
-                const prefixedFiles = subdir
-                  ? files.map(f => ({ path: `${subdir}/${f.path}`, lineCount: f.lineCount }))
-                  : files;
+                // List files from the workspace root
+                const files = await listFilesRecursive(workspaceDir);
                 sendEvent('complete', {
-                  files: prefixedFiles.map(f => ({
+                  files: files.map(f => ({
                     path: f.path,
                     lineCount: f.lineCount,
                     timestamp: Date.now(),
                   })),
-                  totalFiles: prefixedFiles.length,
+                  totalFiles: files.length,
                 });
 
                 controller.close();
@@ -287,22 +264,18 @@ export async function POST(request: NextRequest): Promise<Response> {
             }
           }
         } catch (streamErr: unknown) {
-          // Stream ended or errored
+          // Stream ended or errored — try to send completion based on existing files
           const message = streamErr instanceof Error ? streamErr.message : 'Event stream ended unexpectedly';
-          // If it's just the stream closing, generate completion based on files
-          const files = await listFilesRecursive(sessionDir);
-          const prefixedFiles = subdir
-            ? files.map(f => ({ path: `${subdir}/${f.path}`, lineCount: f.lineCount }))
-            : files;
-          if (prefixedFiles.length > 0) {
-            sendEvent('text', { content: `\n[${agentLabel}] Stream ended. Collecting generated files...\n` });
+          const files = await listFilesRecursive(workspaceDir);
+          if (files.length > 0) {
+            sendEvent('text', { content: `\nStream ended. Collecting workspace files...\n` });
             sendEvent('complete', {
-              files: prefixedFiles.map(f => ({
+              files: files.map(f => ({
                 path: f.path,
                 lineCount: f.lineCount,
                 timestamp: Date.now(),
               })),
-              totalFiles: prefixedFiles.length,
+              totalFiles: files.length,
             });
           } else {
             sendEvent('error', { message });
@@ -311,7 +284,7 @@ export async function POST(request: NextRequest): Promise<Response> {
 
         controller.close();
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : `${agentLabel} codegen failed`;
+        const message = err instanceof Error ? err.message : `${agentLabel} deploy failed`;
         sendEvent('error', { message });
         controller.close();
       }

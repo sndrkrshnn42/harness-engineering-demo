@@ -1,6 +1,6 @@
 export type StageStatus = 'idle' | 'running' | 'complete' | 'error';
 
-export type StageId = 1 | 2 | 3 | 4 | 5 | 6;
+export type StageId = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export interface StageDefinition {
   id: StageId;
@@ -44,23 +44,23 @@ export type PipelineAction =
 export const STAGE_DEFINITIONS: StageDefinition[] = [
   {
     id: 1,
-    name: 'Spec ingestion',
-    roleDisplaced: 'BA / Analyst',
-    expectedOutputLabel: 'Structured requirement breakdown',
-    estimatedSeconds: 8,
+    name: 'PRD & Architecture generation',
+    roleDisplaced: 'BA / Analyst + Solution Architect',
+    expectedOutputLabel: 'PRD + system architecture + API contract',
+    estimatedSeconds: 10,
   },
   {
     id: 2,
     name: 'Code generation',
     roleDisplaced: 'Software Developer + Test Engineer',
-    expectedOutputLabel: 'Application code + pytest test suite',
-    estimatedSeconds: 15,
+    expectedOutputLabel: 'FastAPI backend + React/Skapa frontend + tests',
+    estimatedSeconds: 30,
   },
   {
     id: 3,
     name: 'Infra generation',
     roleDisplaced: 'Platform Engineer',
-    expectedOutputLabel: 'Helm chart + Kubernetes manifests',
+    expectedOutputLabel: 'Kubernetes manifests',
     estimatedSeconds: 10,
   },
   {
@@ -72,13 +72,20 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
   },
   {
     id: 5,
+    name: 'Docker build & deploy',
+    roleDisplaced: 'Release Engineer / SRE',
+    expectedOutputLabel: 'Docker images (Kaniko) + K8s deployment',
+    estimatedSeconds: 90,
+  },
+  {
+    id: 6,
     name: 'Defect triage',
     roleDisplaced: 'Support Engineer',
     expectedOutputLabel: 'Root cause + remediation',
     estimatedSeconds: 7,
   },
   {
-    id: 6,
+    id: 7,
     name: 'Report synthesis',
     roleDisplaced: 'Tech Lead',
     expectedOutputLabel: 'Verdict card + impact summary',

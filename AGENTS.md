@@ -2,13 +2,17 @@
 
 ## Project Overview
 
-Single-page React application demonstrating an AI agent autonomously executing a
-7-stage harness engineering pipeline in ~60 seconds. User pastes a service spec,
-clicks "Run Pipeline", and watches sequential AI-powered stages stream output.
-Stage 2 (Code Generation) uses OpenCode SDK or Qwen agentic mode to produce
-multi-file application code. All other stages stream via a Qwen inference proxy
-with Azure AD authentication handled server-side. Includes a replay mode for
-offline demos.
+Single-page React application demonstrating AI agents autonomously executing a
+7-stage harness engineering pipeline in ~90 seconds. User types a short prompt
+describing their application, clicks "Run Pipeline", and watches sequential
+AI-powered stages stream output. Stage 1 generates a full PRD + Architecture
+document from the prompt. Stage 2 (Code Generation) runs two OpenCode SDK agents
+in parallel — Adrian (FastAPI backend) and Rocky (React + INGKA Skapa frontend).
+Stage 4 (Push to Git) uses `@octokit/rest` to commit and push generated files to
+GitHub. Stage 5 (Docker Build & Deploy) uses the OpenCode SDK DevOps deploy agent to
+autonomously build images with Kaniko and deploy to Kubernetes. All other
+stages stream via a Qwen inference proxy with Azure AD authentication handled
+server-side. Includes a replay mode for offline demos.
 
 ## Tech Stack
 
@@ -16,7 +20,11 @@ offline demos.
 - **Build tool:** Next.js 14 (App Router)
 - **Styling:** Tailwind CSS 3 (dark mode via `class` strategy)
 - **AI inference:** Qwen 2.5 Coder 14B via OpenAI-compatible endpoint (server-side proxy)
-- **Stage 2 codegen:** `@opencode-ai/sdk` (v1.3.13) — spawns OpenCode server, creates sessions, streams events
+- **Stage 2 codegen:** `@opencode-ai/sdk` (v1.3.13) — dual-agent mode, spawns OpenCode server, creates parallel sessions for Adrian (api/) and Rocky (frontend/), streams events
+- **Stage 4 git push:** `@octokit/rest` — Git Data API (create blobs, trees, commits, update refs)
+- **Stage 5 docker/k8s:** `@opencode-ai/sdk` — DevOps deploy agent autonomously runs Kaniko builds and kubectl commands via the execute tool
+- **Markdown rendering:** `react-markdown` + `remark-gfm` + `react-syntax-highlighter` (stage output)
+- **Charting:** `recharts` (per-stage elapsed time bar chart)
 - **Auth:** Azure AD OAuth2 client credentials flow (server-side only, never exposed to browser)
 - **Font:** JetBrains Mono (agent output panels)
 - **State:** `useReducer` + `useRef` — no Redux, no external state libraries
@@ -41,7 +49,7 @@ npm run start
 ```
 
 There is no test framework configured for this project. The application itself
-generates pytest test suites as AI output (Stage 3), but the React app has no
+generates pytest test suites as AI output (Stage 2), but the React app has no
 unit/integration tests.
 
 ## Environment Setup
@@ -53,6 +61,8 @@ AZURE_CLIENT_ID=your_client_id
 AZURE_CLIENT_SECRET=your_client_secret
 INFERENCE_URL=https://qwen25-coder-14b-tenant-coding-assistant.dev.g.inference.genai.mlops.ingka.com
 OPENCODE_PORT=4096
+KUBECONFIG_PATH=~/.kube/config
+K8S_NAMESPACE=mlops-1775309721
 ```
 
 `.env.local` is gitignored by default with Next.js. An `.env.example` with empty
@@ -63,14 +73,16 @@ values exists for reference.
 ```
 src/
   App.tsx                       — Root layout, state machine, mode switching
-  types.ts                      — All shared types, stage definitions, reducer
+  types.ts                      — All shared types, 7 stage definitions, reducer
   app/
     layout.tsx                  — Next.js root layout (html/body, fonts, globals.css)
     page.tsx                    — Next.js page entry (renders App)
     globals.css                 — Tailwind imports + JetBrains Mono
     api/
       inference/route.ts        — SSE proxy to Qwen (Azure AD auth)
-      codegen/route.ts          — OpenCode SDK codegen SSE endpoint
+      codegen/route.ts          — OpenCode SDK dual-agent codegen SSE endpoint
+      git-push/route.ts         — Git push via @octokit/rest Git Data API (SSE)
+      deploy/route.ts              — OpenCode SDK DevOps deploy agent (SSE)
       workspace/route.ts        — Temp workspace create/destroy
       tools/
         write-file/route.ts     — Write file to workspace
@@ -82,17 +94,20 @@ src/
     opencode.ts                 — OpenCode server singleton (globalThis persistence)
     workspace.ts                — Workspace Map management (globalThis persistence)
   constants/
-    prompts.ts                  — All 7 system prompts + OpenCode codegen prompt
-    defaultSpec.ts              — Default input spec (do not change)
+    prompts.ts                  — All 7 system prompts + Adrian/Rocky codegen prompts
+    agentSkills.ts              — Adrian (FastAPI) and Rocky (React/INGKA Skapa) skill definitions
+    defaultPrompt.ts            — Default user prompt (short application description)
     replayData.ts               — Pre-baked outputs for replay mode (currently empty)
   hooks/
-    usePipeline.ts              — Pipeline orchestration + streaming logic
+    usePipeline.ts              — Pipeline orchestration + dual-agent streaming logic
     useReplay.ts                — Replay mode hook
   components/
-    InputPanel.tsx              — Spec textarea + Run/Abort/Reset buttons + codegen mode toggle
+    InputPanel.tsx              — Prompt textarea + Run/Abort/Reset buttons + GitHub push inputs
     PipelinePanel.tsx           — Stage cards container + FileTree after Stage 2
     StageCard.tsx               — Individual stage card with streaming output
-    VerdictCard.tsx             — Final verdict card with impact summary
+    MarkdownOutput.tsx          — Markdown renderer for stage output (react-markdown + remark-gfm)
+    VerdictCard.tsx             — Final verdict card with impact summary (9 roles)
+    PipelineChart.tsx           — Per-stage elapsed time bar chart (recharts)
     ProgressBar.tsx             — Pipeline progress bar
     ElapsedTimer.tsx            — Live elapsed time counter
     MetricsBar.tsx              — Live stage/token/line/role counts
@@ -103,11 +118,11 @@ src/
 
 | ID | Stage Name | Role Displaced | Expected Output |
 |----|-----------|---------------|-----------------|
-| 1 | Spec ingestion | BA / Analyst | Structured requirement breakdown |
-| 2 | Code generation | Software Developer | Backend API handlers + Frontend React components |
-| 3 | Test case generation | Test Engineer | Full pytest test suite |
-| 4 | Harness configuration | Pipeline Engineer | Deployment-ready Kubernetes YAML |
-| 5 | Evaluation scoring | QA Analyst | Ragas-style quality metrics |
+| 1 | PRD & Architecture generation | BA / Analyst + Solution Architect | PRD + system architecture + API contract |
+| 2 | Code generation | Software Developer + Test Engineer | FastAPI backend (api/) + React/Skapa frontend (frontend/) + tests |
+| 3 | Infra generation | Platform Engineer | Standalone Kubernetes manifests (k8s/) |
+| 4 | Push to Git | DevOps Engineer | Git commit + push to remote |
+| 5 | Docker build & deploy | Release Engineer / SRE | Docker images (Kaniko) + K8s deployment to mlops-1775309721 |
 | 6 | Defect triage | Support Engineer | Root cause + remediation |
 | 7 | Report synthesis | Tech Lead | Verdict card + impact summary |
 
@@ -132,7 +147,7 @@ src/
 | Variables/functions | camelCase | `stageStart`, `buildUserMessage` |
 | Files — components | PascalCase `.tsx` | `StageCard.tsx` |
 | Files — hooks | camelCase `.ts` | `usePipeline.ts` |
-| Files — constants | camelCase `.ts` | `prompts.ts`, `defaultSpec.ts` |
+| Files — constants | camelCase `.ts` | `prompts.ts`, `agentSkills.ts` |
 | Files — lib | camelCase `.ts` | `auth.ts`, `opencode.ts` |
 | Files — API routes | `route.ts` in named dirs | `api/inference/route.ts` |
 
@@ -195,21 +210,51 @@ src/
   vars. The browser never sees secrets.
 - **Auth flow:** `src/lib/auth.ts` acquires OAuth2 tokens via Azure AD client
   credentials grant. Tokens are cached in-memory with expiry tracking.
-- **Model:** Qwen 2.5 Coder 14B for stages 1, 3-7. OpenCode SDK (with its
-  configured model) for Stage 2 codegen.
-- **Stage 2 codegen modes:** Toggle between `opencode` (default) and `qwen`:
-  - **OpenCode mode:** `@opencode-ai/sdk` spawns a server, creates a session
-    pointed at the workspace temp dir, sends prompt async, streams events
-    (text/file/tool/complete/error) back via SSE.
-  - **Qwen mode:** Agentic tool-calling loop with tools (write_file, read_file,
-    list_files, execute_command). Falls back to standard streaming if the
-    endpoint rejects tool calls.
+- **Model:** Qwen 2.5 Coder 14B for stages 1, 3, 6-7. OpenCode SDK (with its
+  configured model) for Stage 2 codegen. Stage 4 (Push to Git) and Stage 5
+  (Docker Build & Deploy) are non-AI.
+- **Stage 1 PRD generation:** Takes a short user prompt and generates a complete
+  PRD + Architecture + API Contract document. Replaces the old "spec ingestion"
+  that merely analyzed a pasted spec.
+- **Stage 2 codegen — dual-agent mode:** Two OpenCode agents run in parallel:
+  - **Adrian:** FastAPI Python backend, writes to `api/` subdirectory
+  - **Rocky:** React + INGKA Skapa Design System frontend, writes to `frontend/`
+  - Each agent gets its own OpenCode session scoped to its subdirectory
+  - After both agents complete, a testing sub-step validates syntax and structure
+  - The `usePipeline` hook accepts a `codegenMode` parameter internally for
+    branching, but the App always passes `'opencode'`.
+  - **Qwen mode (internal fallback):** Agentic tool-calling loop with tools
+    (write_file, read_file, list_files, execute_command). Falls back to standard
+    streaming if the endpoint rejects tool calls.
+  - **Stage 5 uses a third OpenCode agent (DevOps)** in addition to Adrian and
+    Rocky. This agent autonomously handles Docker image builds (Kaniko) and
+    Kubernetes deployments without manual orchestration code.
+- **Stage 5 Docker Build & Deploy:**
+  - Uses a DevOps deploy agent (`@opencode-ai/sdk`) that autonomously handles
+    the full build-and-deploy lifecycle — no imperative orchestration code
+  - **Kaniko builds:** The agent creates Kaniko K8s Jobs
+    (`gcr.io/kaniko-project/executor`) to build container images in-cluster,
+    monitors Job completion, and cleans up resources (ConfigMap + Job) afterward
+  - **Image push:** Pushes images to Artifact Registry at
+    `europe-west4-docker.pkg.dev/ingka-genai-platform-dev/genai-platform/`
+  - Uses K8s service account `harness-builder` with Workload Identity for
+    Artifact Registry access (no static credentials)
+  - **K8s deployment:** Applies manifests via `kubectl apply` commands, monitors
+    rollout status, and diagnoses errors autonomously
+  - Uses the execute tool to run kubectl commands (180s timeout)
+  - Authenticates via kubeconfig file (`~/.kube/config` or `KUBECONFIG_PATH` env)
+  - Auto-creates Dockerfiles if none exist but api/ or frontend/ dirs are present
+- **INGKA Skapa Design System:** Rocky agent uses INGKA Skapa components via
+  `@ingka/*` scoped packages (e.g., `import Button from '@ingka/button'`). Each
+  component is a separate npm package from IKEA's private registry. The full
+  skill reference is in `docs/skapa/SKILL.md` and embedded in the Rocky prompt
+  via `src/constants/agentSkills.ts`.
 - **globalThis singletons:** `workspace.ts` and `opencode.ts` use `globalThis`
   for Map/server state persistence across Next.js HMR re-evaluations in dev mode.
 - **Workspace management:** Each pipeline run creates a temp directory
   (`os.tmpdir() + '/harness-run-' + id`). Files are written there during Stage 2.
   Workspace is destroyed on reset. Path traversal protection enforced.
-- **Max tokens:** 2048 per stage. Do not reduce — Stage 3 (test generation)
+- **Max tokens:** 2048 per stage. Do not reduce — Stage 3 (infra generation)
   regularly uses 1800+ tokens.
 - **Inter-stage pause:** 600ms between stages for visual rhythm. Intentional.
 - **No streaming fallback:** Requires `ReadableStream` support (Chrome 95+).
@@ -220,7 +265,9 @@ src/
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/api/inference` | POST | SSE proxy to Qwen. Acquires Azure AD token, forwards messages, streams response. |
-| `/api/codegen` | POST | OpenCode SDK codegen. Creates session, sends prompt, relays events as SSE. |
+| `/api/codegen` | POST | OpenCode SDK dual-agent codegen. Accepts `agent` and `subdir` params for scoped sessions. SSE events. |
+| `/api/git-push` | POST | Git push via @octokit/rest Git Data API. Reads workspace files, creates blobs/tree/commit, updates ref. SSE progress stream. |
+| `/api/deploy` | POST | OpenCode SDK DevOps deploy agent. Creates session, sends deploy prompt, relays SSE events. |
 | `/api/workspace` | POST | Creates temp workspace directory. Returns `{ workspaceId }`. |
 | `/api/workspace` | DELETE | Destroys workspace by ID (`?id=...`). |
 | `/api/tools/write-file` | POST | Writes file to workspace. Body: `{ workspaceId, filePath, content }`. |
@@ -233,11 +280,10 @@ src/
 - All 7 stage cards visible on load in idle state (shows pipeline structure).
 - Run button disabled when textarea empty; becomes "Abort" during execution,
   "Reset" after completion.
-- Codegen mode toggle (Qwen / OpenCode) shown in InputPanel, disabled during run.
 - Stage output max-height: 256px while running (scrollable), 320px when complete.
 - Auto-scroll output to bottom while streaming; stop on stage completion.
 - FileTree component renders after Stage 2 card, showing generated file structure.
 - On error: pipeline halts, show error + "Retry" button in failed card.
 - Abort: call `abortRef.current?.abort()`, reset all stages to idle.
-- VerdictCard shows "7 Tasks completed", lists all 7 displaced roles with
+- VerdictCard shows "7 Tasks completed", lists all 9 displaced roles with
   strikethrough, and displays a timeline comparison bar chart.

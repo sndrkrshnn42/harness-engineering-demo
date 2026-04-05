@@ -27,9 +27,11 @@ export function MetricsBar({ pipelineState }: Props) {
       d => pipelineState.stages[d.id].status === 'complete'
     ).length;
 
-    // Stage 2 displaces 2 roles (Software Developer + Test Engineer), all others displace 1
+    // Stage 1 displaces 2 roles (BA/Analyst + Solution Architect), Stage 2 displaces 2 roles
+    // (Software Developer + Test Engineer), all others displace 1
+    const stage1Complete = pipelineState.stages[1]?.status === 'complete';
     const stage2Complete = pipelineState.stages[2]?.status === 'complete';
-    const rolesDisplaced = completedCount + (stage2Complete ? 1 : 0);
+    const rolesDisplaced = completedCount + (stage1Complete ? 1 : 0) + (stage2Complete ? 1 : 0);
 
     const isRunning = pipelineState.status === 'running';
 
@@ -63,11 +65,11 @@ export function MetricsBar({ pipelineState }: Props) {
     <div className="flex items-center gap-4 px-1 py-1.5">
       {metrics.map(m => (
         <div key={m.label} className="flex items-center gap-1.5">
-          <span className="text-xs text-zinc-600 font-mono">{m.label}:</span>
-          <span className={`
-            text-xs font-mono font-bold
-            ${m.active ? 'text-violet-400 animate-counter-active' : 'text-emerald-400'}
-          `}>
+          <span className="text-xs text-skapa-text-3">{m.label}:</span>
+          <span
+            className={`text-xs font-bold ${m.active ? 'animate-counter-active' : ''}`}
+            style={{ color: m.active ? 'var(--skapa-brand-blue)' : 'var(--skapa-positive)' }}
+          >
             {m.value}
           </span>
         </div>

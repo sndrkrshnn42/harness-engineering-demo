@@ -11,7 +11,7 @@ real time.
 |-------|-------------------|-------------------------------------|---------------------------------------|
 | 1     | Spec ingestion    | BA / Analyst                        | Structured requirement breakdown      |
 | 2     | Code generation   | Software Developer + Test Engineer  | Application code + pytest test suite  |
-| 3     | Infra generation  | Platform Engineer                   | Helm chart + Kubernetes manifests     |
+| 3     | Infra generation  | Platform Engineer                   | Standalone Kubernetes manifests     |
 | 4     | Push to Git       | DevOps Engineer                     | Git commit + push to remote           |
 | 5     | Defect triage     | Support Engineer                    | Root cause + remediation              |
 | 6     | Report synthesis  | Tech Lead                           | Verdict card + impact summary         |

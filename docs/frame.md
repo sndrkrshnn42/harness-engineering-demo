@@ -45,7 +45,7 @@ stage represents a person they know — someone on their team.
 | 1. Spec Ingestion | **Business Analyst** | Reads specs, writes requirement docs, hosts clarification meetings | Parses the spec, extracts every FR, NFR, contract constraint, risk flag, and open question — exhaustively |
 | 2. Code Generation | **Software Developer (Frontend & Backend)** | Designs component architecture, writes API handlers, builds UI components, wires up state management | Generates production-grade application code — backend API routes with validation, error handling, and database queries; frontend React components with state management, data fetching, and responsive UI |
 | 3. Test Generation | **Test Engineer** | Writes test suites, covers edge cases, maps requirements to test cases | Produces a complete pytest suite with 15+ test cases, boundary conditions, contract tests, and risk coverage markers |
-| 4. Harness Configuration | **Pipeline Engineer** | Writes Kubernetes manifests, configures CI/CD, manages Helm charts | Generates deployment-ready K8s Job, ConfigMap, and Helm values — production-grade YAML |
+| 4. Harness Configuration | **Pipeline Engineer** | Writes Kubernetes manifests, configures CI/CD, manages infrastructure | Generates deployment-ready standalone K8s manifests — production-grade YAML |
 | 5. Evaluation Scoring | **QA Analyst** | Reviews test quality, scores coverage, identifies gaps in test suites | Scores the test suite using Ragas-inspired metrics with honest, uninflated scoring and a PASS/FAIL verdict |
 | 6. Defect Triage | **Support Engineer** | Triages defects, identifies root causes, writes remediation steps | Produces a structured defect log with severity ratings, root cause analysis, and actual remediation code |
 | 7. Report Synthesis | **Tech Lead** | Synthesises all work into executive summaries, makes go/no-go calls | Generates a complete pipeline execution report with impact metrics and prioritised next steps |
@@ -330,7 +330,7 @@ Raw Spec (Security Observability Dashboard — IEEE 830 SRS)
 [3] Test Suite Generation         --> Executable test code with full coverage
   |
   v
-[4] Infrastructure Config         --> Deployment manifests, Helm charts
+[4] Infrastructure Config         --> Standalone Kubernetes manifests
   |
   v
 [5] Quality Evaluation            --> Quantified test quality scoring

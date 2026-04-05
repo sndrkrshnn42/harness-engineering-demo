@@ -14,12 +14,13 @@ export function ProgressBar({ pipelineState }: Props) {
   const isComplete = pipelineState.status === 'complete';
 
   return (
-    <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+    <div className="w-full h-1 bg-skapa-neutral-3 rounded-full overflow-hidden">
       <div
-        className={`h-full rounded-full transition-all duration-500 ease-out ${
-          isComplete ? 'bg-emerald-500' : 'bg-violet-500'
-        }`}
-        style={{ width: `${pct}%` }}
+        className="h-full rounded-full transition-all duration-500 ease-out"
+        style={{
+          width: `${pct}%`,
+          backgroundColor: isComplete ? 'var(--skapa-positive)' : 'var(--skapa-brand-blue)',
+        }}
       />
     </div>
   );

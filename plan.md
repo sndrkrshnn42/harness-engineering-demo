@@ -373,7 +373,7 @@ Output starts with: \`\`\`python
 Output ends with: \`\`\``,
 
 
-  3: `You are a Senior Platform Engineer specialising in Kubernetes and Helm for ML/AI workload pipelines. You receive a pytest test suite and produce deployment infrastructure configuration.
+  3: `You are a Senior Platform Engineer specialising in Kubernetes for ML/AI workload pipelines. You receive a pytest test suite and produce deployment infrastructure configuration.
 
 Output ONLY valid YAML. No prose. No markdown outside YAML blocks. No explanation. Begin immediately with the first YAML document.
 
@@ -407,10 +407,9 @@ Document 2 — ConfigMap:
 - metadata.namespace: harness-eval
 - data: test_suite.py: | <the full test suite content from the input>
 
-Document 3 — Helm values stub:
-- image.repository: registry.internal/harness-runner
-- image.tag: latest
-- namespace: harness-eval
+Document 3 — Resource defaults:
+- image: europe-west4-docker.pkg.dev/ingka-genai-platform-dev/genai-platform/harness-runner:latest
+- namespace: mlops-1775309721
 - resources.requests.cpu: 500m
 - resources.requests.memory: 512Mi
 - resources.limits.cpu: 2000m
@@ -506,7 +505,7 @@ Output format — follow EXACTLY. No preamble. Begin immediately with the headin
 |-------|---------------|-------------------|--------|
 | Spec Ingestion | BA / Analyst | Structured requirements (<N> FRs, <N> NFRs, <N> Risk Flags) | ✅ |
 | Test Case Generation | Test Engineer | <N> test cases (pytest) | ✅ |
-| Harness Configuration | Pipeline Engineer | Kubernetes Job + ConfigMap + Helm values | ✅ |
+| Harness Configuration | Pipeline Engineer | Standalone Kubernetes manifests | ✅ |
 | Evaluation Scoring | QA Analyst | Overall score: <X.XX> (<PASS or FAIL>) | ✅ |
 | Defect Triage | Support Engineer | <N> defects (<N> Critical, <N> Major, <N> Minor) | ✅ |
 | Report Synthesis | Tech Lead | This document | ✅ |

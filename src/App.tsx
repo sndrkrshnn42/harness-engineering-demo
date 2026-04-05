@@ -1,33 +1,23 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { usePipeline } from './hooks/usePipeline';
 import { useReplay } from './hooks/useReplay';
-import { DEFAULT_SPEC } from './constants/defaultSpec';
+import { DEFAULT_PROMPT } from './constants/defaultPrompt';
 import { InputPanel } from './components/InputPanel';
 import { PipelinePanel } from './components/PipelinePanel';
 import { STAGE_DEFINITIONS } from './types';
-import type { CodegenMode } from './types';
+import Status from '@ingka/status';
+import Pill from '@ingka/pill';
 
-/** Generate a random hex session ID on mount (for terminal authenticity). */
-function generateSessionId(): string {
-  const bytes = new Uint8Array(4);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
-}
 
 export default function App() {
-  const [inputSpec, setInputSpec] = useState(DEFAULT_SPEC);
+  const [inputSpec, setInputSpec] = useState(DEFAULT_PROMPT);
   const [isReplayMode, setIsReplayMode] = useState(false);
-  const [codegenMode, setCodegenMode] = useState<CodegenMode>('opencode');
   const [patToken, setPatToken] = useState('');
   const [repoUrl, setRepoUrl] = useState('');
-  const [sessionId, setSessionId] = useState('--------');
-  useEffect(() => {
-    setSessionId(generateSessionId());
-  }, []);
 
-  const pipeline = usePipeline(inputSpec, codegenMode, patToken, repoUrl);
+  const pipeline = usePipeline(inputSpec, 'opencode', patToken, repoUrl);
   const replay = useReplay();
 
   const activeState = isReplayMode ? replay.state : pipeline.state;
@@ -56,66 +46,46 @@ export default function App() {
     setIsReplayMode(true);
   }, [pipeline]);
 
-  // Terminal-style status line
+  // Status line text
   const statusLine = useMemo(() => {
-    if (activeState.status === 'idle') return 'IDLE';
-    if (activeState.status === 'complete') return 'COMPLETE';
-    if (activeState.status === 'error') return 'ERROR';
+    if (activeState.status === 'idle') return 'Idle';
+    if (activeState.status === 'complete') return 'Complete';
+    if (activeState.status === 'error') return 'Error';
     if (activeState.currentStage) {
       const def = STAGE_DEFINITIONS.find(d => d.id === activeState.currentStage);
-      return `RUNNING Stage ${activeState.currentStage}/${STAGE_DEFINITIONS.length}${def ? ` — ${def.name}` : ''}`;
+      return `Stage ${activeState.currentStage}/${STAGE_DEFINITIONS.length}${def ? ` \u2014 ${def.name}` : ''}`;
     }
-    return 'RUNNING';
+    return 'Running';
   }, [activeState.status, activeState.currentStage]);
 
-  return (
-    <div className="min-h-screen bg-zinc-950 text-white">
-      {/* Terminal-style top bar */}
-      <header className="border-b border-zinc-800 bg-zinc-950 relative overflow-hidden">
-        {/* Subtle scanline overlay */}
-        <div className="absolute inset-0 pointer-events-none scanline-overlay" />
+  // Map pipeline status to Skapa Status variant
+  const statusVariant = useMemo(() => {
+    if (activeState.status === 'running') return 'informative' as const;
+    if (activeState.status === 'complete') return 'positive' as const;
+    if (activeState.status === 'error') return 'negative' as const;
+    return 'indeterminate' as const;
+  }, [activeState.status]);
 
-        <div className="relative z-10 px-6 py-3 flex items-center justify-between font-mono">
-          {/* Left: terminal prompt */}
+  return (
+    <div className="min-h-screen bg-skapa-neutral-1 text-skapa-text-1">
+      {/* Top bar — INGKA branded header */}
+      <header className="border-b border-skapa-brand-blue bg-skapa-brand-blue">
+        <div className="px-6 py-3 flex items-center justify-between">
+          {/* Left: INGKA branding */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className={`
-                w-2 h-2 rounded-full inline-block
-                ${isRunning ? 'bg-violet-400 animate-pulse' : ''}
-                ${isComplete ? 'bg-emerald-400' : ''}
-                ${activeState.status === 'error' ? 'bg-red-400' : ''}
-                ${activeState.status === 'idle' ? 'bg-zinc-600' : ''}
-              `} />
-              <span className="text-sm font-bold text-white tracking-tight">
-                HARNESS-ENG
-              </span>
-            </div>
-            <span className="text-xs text-zinc-600">|</span>
-            <span className="text-xs text-zinc-500">
-              session:{sessionId}
+            {/* IKEA logo */}
+            <img src="/ikea-logo.svg" alt="IKEA" className="h-8 w-auto" />
+            <span className="text-base font-bold tracking-tight" style={{ color: 'var(--skapa-brand-yellow)' }}>
+              Harness Engineering
             </span>
-            <span className="text-xs text-zinc-600">|</span>
-            <span className="text-xs text-zinc-500">
-              7 roles &middot; 0 handoffs
-            </span>
+            {isReplayMode && (
+              <Pill label="REPLAY" size="xsmall" selected />
+            )}
           </div>
 
-          {/* Right: status indicators */}
-          <div className="flex items-center gap-3">
-            {isReplayMode && (
-              <span className="text-xs px-2 py-0.5 rounded font-mono bg-amber-900/40 text-amber-400 border border-amber-700/40">
-                REPLAY
-              </span>
-            )}
-            <span className={`
-              text-xs px-2 py-0.5 rounded font-mono
-              ${activeState.status === 'idle' ? 'bg-zinc-900 text-zinc-500 border border-zinc-800' : ''}
-              ${activeState.status === 'running' ? 'bg-violet-900/40 text-violet-400 border border-violet-700/40' : ''}
-              ${activeState.status === 'complete' ? 'bg-emerald-900/40 text-emerald-400 border border-emerald-700/40' : ''}
-              ${activeState.status === 'error' ? 'bg-red-900/40 text-red-400 border border-red-700/40' : ''}
-            `}>
-              [{statusLine}]
-            </span>
+          {/* Right: pipeline status */}
+          <div className="flex items-center gap-3" style={{ color: 'var(--skapa-brand-yellow)' }}>
+            <Status variant={statusVariant} small label={statusLine} />
           </div>
         </div>
       </header>
@@ -123,7 +93,7 @@ export default function App() {
       {/* Main content — two-panel layout */}
       <main className="grid grid-cols-1 lg:grid-cols-2 gap-0 h-[calc(100vh-53px)]">
         {/* Left: Input */}
-        <div className="border-r border-zinc-800 p-5 flex flex-col min-h-0">
+        <div className="border-r border-skapa-neutral-3 p-5 flex flex-col min-h-0">
           <InputPanel
             value={inputSpec}
             onChange={setInputSpec}
@@ -132,12 +102,13 @@ export default function App() {
             onEnterReplay={handleEnterReplay}
             isRunning={isRunning}
             isComplete={isComplete}
-            codegenMode={codegenMode}
-            onCodegenModeChange={setCodegenMode}
             patToken={patToken}
             onPatTokenChange={setPatToken}
             repoUrl={repoUrl}
             onRepoUrlChange={setRepoUrl}
+            agentFiles={pipeline.agentFiles.current}
+            workspaceId={pipeline.workspaceId.current}
+            pipelineState={activeState}
           />
         </div>
 
@@ -145,8 +116,6 @@ export default function App() {
         <div className="p-5 flex flex-col overflow-hidden min-h-0">
           <PipelinePanel
             pipelineState={activeState}
-            agentFiles={pipeline.agentFiles.current}
-            workspaceId={pipeline.workspaceId.current}
           />
         </div>
       </main>

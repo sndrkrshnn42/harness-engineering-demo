@@ -1,0 +1,159 @@
+/* ─── Skapa Foundation ────────────────────────────────────────────────────── */
+@import '@ingka/base/dist/style.min.css';
+
+/* ─── Skapa Component Styles ─────────────────────────────────────────────── */
+@import '@ingka/focus/dist/style.min.css';
+@import '@ingka/forms/dist/style.min.css';
+@import '@ingka/validation-border/dist/style.min.css';
+@import '@ingka/helper-text/dist/style.min.css';
+@import '@ingka/button/dist/style.min.css';
+@import '@ingka/card/dist/style.min.css';
+@import '@ingka/badge/dist/style.min.css';
+@import '@ingka/status/dist/style.min.css';
+@import '@ingka/loading/dist/style.min.css';
+@import '@ingka/inline-message/dist/style.min.css';
+@import '@ingka/pill/dist/style.min.css';
+@import '@ingka/tooltip/dist/style.min.css';
+@import '@ingka/accordion/dist/style.min.css';
+@import '@ingka/collapsible/dist/style.min.css';
+@import '@ingka/skeleton/dist/style.min.css';
+
+/* ─── Fonts ──────────────────────────────────────────────────────────────── */
+/* Noto IKEA is the official INGKA font but is not shipped with Skapa.        */
+/* We rely on the system font stack from @ingka/base (modern-normalize).      */
+/* JetBrains Mono is retained only for code blocks in MarkdownOutput.         */
+@import '@fontsource/jetbrains-mono';
+
+/* ─── Tailwind ───────────────────────────────────────────────────────────── */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Header Status Override ─────────────────────────────────────────────── */
+/* Force Skapa Status label text to brand yellow inside the blue header.      */
+header .status__label {
+  color: var(--skapa-brand-yellow) !important;
+}
+
+/* ─── Skapa Design Tokens as CSS Custom Properties ───────────────────────── */
+/* Exposed at :root so Tailwind and inline styles can reference them.         */
+/* Light mode defaults from @ingka/variables, with dark mode override.        */
+
+:root {
+  /* Neutral backgrounds */
+  --skapa-neutral-1: rgb(255, 255, 255);
+  --skapa-neutral-2: rgb(245, 245, 245);
+  --skapa-neutral-3: rgb(223, 223, 223);
+  --skapa-neutral-4: rgb(204, 204, 204);
+  --skapa-neutral-5: rgb(146, 146, 146);
+  --skapa-neutral-6: rgb(72, 72, 72);
+  --skapa-neutral-7: rgb(17, 17, 17);
+
+  /* Text & icon hierarchy */
+  --skapa-text-1: rgb(17, 17, 17);
+  --skapa-text-2: rgb(72, 72, 72);
+  --skapa-text-3: rgb(118, 118, 118);
+  --skapa-text-4: rgb(146, 146, 146);
+  --skapa-text-5: rgb(255, 255, 255);
+
+  /* Elevation */
+  --skapa-elevation-1: rgb(255, 255, 255);
+  --skapa-elevation-2: rgb(255, 255, 255);
+  --skapa-elevation-border-1: rgb(223, 223, 223);
+  --skapa-elevation-border-2: rgb(72, 72, 72);
+
+  /* Semantic */
+  --skapa-positive: rgb(10, 138, 0);
+  --skapa-negative: rgb(224, 7, 81);
+  --skapa-caution: rgb(242, 106, 47);
+  --skapa-informative: rgb(0, 88, 163);
+
+  /* Brand */
+  --skapa-brand-blue: rgb(0, 88, 163);
+  --skapa-brand-yellow: rgb(255, 219, 0);
+
+  /* Static */
+  --skapa-static-white: rgb(255, 255, 255);
+  --skapa-static-black: rgb(17, 17, 17);
+  --skapa-static-grey: rgb(223, 223, 223);
+  --skapa-static-dark-grey: rgb(118, 118, 118);
+  --skapa-static-light-grey: rgb(245, 245, 245);
+
+  /* Spacing */
+  --skapa-space-25: 0.25rem;
+  --skapa-space-50: 0.5rem;
+  --skapa-space-75: 0.75rem;
+  --skapa-space-100: 1rem;
+  --skapa-space-150: 1.5rem;
+  --skapa-space-200: 2rem;
+  --skapa-space-300: 3rem;
+
+  /* Radius */
+  --skapa-radius-s: 4px;
+  --skapa-radius-m: 8px;
+  --skapa-radius-l: 12px;
+
+  /* Transitions */
+  --skapa-duration-quick: 100ms;
+  --skapa-duration-standard: 200ms;
+  --skapa-duration-slow: 250ms;
+  --skapa-ease: cubic-bezier(0.4, 0, 0.4, 1);
+}
+
+/* ─── Stage completion pulse animation ───────────────────────────────────── */
+@keyframes stage-complete-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(10, 138, 0, 0.3); }
+  70% { box-shadow: 0 0 0 6px rgba(10, 138, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(10, 138, 0, 0); }
+}
+
+.animate-stage-complete {
+  animation: stage-complete-pulse 0.6s ease-out;
+}
+
+/* ─── Data flow dot between stages ───────────────────────────────────────── */
+@keyframes data-flow {
+  0% { opacity: 0; transform: translateY(-4px); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(12px); }
+}
+
+.animate-data-flow {
+  animation: data-flow 0.8s ease-in-out;
+}
+
+/* ─── Counter count-up shimmer ───────────────────────────────────────────── */
+@keyframes shimmer {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+.animate-counter-active {
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ─── File tree item fade-in ─────────────────────────────────────────────── */
+@keyframes fade-in {
+  0% { opacity: 0; transform: translateX(-4px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* ─── Invisible scrollbars ───────────────────────────────────────────────── */
+/* Hide scrollbars globally while preserving scroll functionality.            */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE / Edge */
+}
+
+*::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* ─── Skapa component overrides for dark surfaces ────────────────────────── */
+/* The app uses a neutral-7 (dark) background, so Skapa components need       */
+/* inverse/dark-aware overrides where the default light theme would clash.     */
