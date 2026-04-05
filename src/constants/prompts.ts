@@ -108,11 +108,11 @@ Produce ALL of the following files, each separated by the # FILE marker:
 # FILE: k8s/api-deployment.yaml
 - apiVersion: apps/v1
 - Full Kubernetes Deployment manifest for the FastAPI backend
-- metadata.name: <service-name>-api
+- metadata.name: __SERVICE_SLUG__-api
 - metadata.namespace: mlops-1775309721
-- Labels: app.kubernetes.io/name: <service-name>, app.kubernetes.io/component: api, mlops.in/initiative-name: mlops-ai-agent-system, mlops.in/team-name: core-platform, mlops.in/component: <service-name>-api, mlops.in/component-type: agent
+- Labels: app.kubernetes.io/name: __SERVICE_SLUG__, app.kubernetes.io/component: api, mlops.in/initiative-name: mlops-ai-agent-system, mlops.in/team-name: core-platform, mlops.in/component: __SERVICE_SLUG__-api, mlops.in/component-type: agent
 - spec.replicas: 2
-- Container image: europe-west4-docker.pkg.dev/ingka-genai-platform-dev/genai-platform/harness-demo-api:latest, imagePullPolicy: IfNotPresent
+- Container image: europe-west4-docker.pkg.dev/ingka-genai-platform-dev/genai-platform/__SERVICE_SLUG__-api:latest, imagePullPolicy: IfNotPresent
 - Container port: 8000
 - Liveness probe: httpGet /health port 8000, initialDelaySeconds 10, periodSeconds 15
 - Readiness probe: httpGet /ready port 8000, initialDelaySeconds 5, periodSeconds 10
@@ -122,20 +122,20 @@ Produce ALL of the following files, each separated by the # FILE marker:
 # FILE: k8s/api-service.yaml
 - apiVersion: v1
 - Full Kubernetes Service manifest for the API
-- metadata.name: <service-name>-api
+- metadata.name: __SERVICE_SLUG__-api
 - metadata.namespace: mlops-1775309721
-- metadata.labels: mlops.in/initiative-name: mlops-ai-agent-system, mlops.in/team-name: core-platform, mlops.in/component: <service-name>-api, mlops.in/component-type: agent
+- metadata.labels: mlops.in/initiative-name: mlops-ai-agent-system, mlops.in/team-name: core-platform, mlops.in/component: __SERVICE_SLUG__-api, mlops.in/component-type: agent
 - spec.type: ClusterIP
 - Port 8000 targeting the API pods by label selector
 
 # FILE: k8s/frontend-deployment.yaml
 - apiVersion: apps/v1
 - Full Kubernetes Deployment manifest for the React frontend (nginx)
-- metadata.name: <service-name>-frontend
+- metadata.name: __SERVICE_SLUG__-frontend
 - metadata.namespace: mlops-1775309721
-- Labels: app.kubernetes.io/name: <service-name>, app.kubernetes.io/component: frontend, mlops.in/initiative-name: mlops-ai-agent-system, mlops.in/team-name: core-platform, mlops.in/component: <service-name>-frontend, mlops.in/component-type: gateway
+- Labels: app.kubernetes.io/name: __SERVICE_SLUG__, app.kubernetes.io/component: frontend, mlops.in/initiative-name: mlops-ai-agent-system, mlops.in/team-name: core-platform, mlops.in/component: __SERVICE_SLUG__-frontend, mlops.in/component-type: gateway
 - spec.replicas: 2
-- Container image: europe-west4-docker.pkg.dev/ingka-genai-platform-dev/genai-platform/harness-demo-frontend:latest, imagePullPolicy: IfNotPresent
+- Container image: europe-west4-docker.pkg.dev/ingka-genai-platform-dev/genai-platform/__SERVICE_SLUG__-frontend:latest, imagePullPolicy: IfNotPresent
 - Container port: 80
 - Liveness probe: httpGet / port 80
 - Resources requests: cpu 100m, memory 128Mi; limits: cpu 500m, memory 512Mi
@@ -143,36 +143,36 @@ Produce ALL of the following files, each separated by the # FILE marker:
 # FILE: k8s/frontend-service.yaml
 - apiVersion: v1
 - Full Kubernetes Service manifest for the frontend
-- metadata.name: <service-name>-frontend
+- metadata.name: __SERVICE_SLUG__-frontend
 - metadata.namespace: mlops-1775309721
-- metadata.labels: mlops.in/initiative-name: mlops-ai-agent-system, mlops.in/team-name: core-platform, mlops.in/component: <service-name>-frontend, mlops.in/component-type: gateway
+- metadata.labels: mlops.in/initiative-name: mlops-ai-agent-system, mlops.in/team-name: core-platform, mlops.in/component: __SERVICE_SLUG__-frontend, mlops.in/component-type: gateway
 - spec.type: ClusterIP
 - Port 80 targeting the frontend pods
 
 # FILE: k8s/ingress.yaml
 - apiVersion: networking.k8s.io/v1
 - Full Kubernetes Ingress manifest
-- metadata.name: <service-name>-ingress
+- metadata.name: __SERVICE_SLUG__-ingress
 - metadata.namespace: mlops-1775309721
-- metadata.labels: mlops.in/initiative-name: mlops-ai-agent-system, mlops.in/team-name: core-platform, mlops.in/component: <service-name>-ingress, mlops.in/component-type: gateway
+- metadata.labels: mlops.in/initiative-name: mlops-ai-agent-system, mlops.in/team-name: core-platform, mlops.in/component: __SERVICE_SLUG__-ingress, mlops.in/component-type: gateway
 - Route /api/* to the API service on port 8000
 - Route /* to the Frontend service on port 80
-- Host: <service-name>.internal
+- Host: __SERVICE_SLUG__.internal
 
 # FILE: k8s/configmap.yaml
 - apiVersion: v1
 - Application configuration as a ConfigMap
-- metadata.name: <service-name>-config
+- metadata.name: __SERVICE_SLUG__-config
 - metadata.namespace: mlops-1775309721
-- metadata.labels: mlops.in/initiative-name: mlops-ai-agent-system, mlops.in/team-name: core-platform, mlops.in/component: <service-name>-config, mlops.in/component-type: mcp-server
+- metadata.labels: mlops.in/initiative-name: mlops-ai-agent-system, mlops.in/team-name: core-platform, mlops.in/component: __SERVICE_SLUG__-config, mlops.in/component-type: mcp-server
 - Include API_URL for frontend, any backend configuration values
 
 # FILE: k8s/secret.yaml
 - apiVersion: v1
 - Placeholder Secret manifest for sensitive values
-- metadata.name: <service-name>-secrets
+- metadata.name: __SERVICE_SLUG__-secrets
 - metadata.namespace: mlops-1775309721
-- metadata.labels: mlops.in/initiative-name: mlops-ai-agent-system, mlops.in/team-name: core-platform, mlops.in/component: <service-name>-secrets, mlops.in/component-type: mcp-server
+- metadata.labels: mlops.in/initiative-name: mlops-ai-agent-system, mlops.in/team-name: core-platform, mlops.in/component: __SERVICE_SLUG__-secrets, mlops.in/component-type: mcp-server
 - type: Opaque
 - data: base64-encoded placeholder values with TODO comments
 
@@ -180,7 +180,7 @@ Produce ALL of the following files, each separated by the # FILE marker:
 - apiVersion: autoscaling/v2
 - HorizontalPodAutoscaler manifest for BOTH services (two YAML documents separated by ---)
 - metadata.namespace: mlops-1775309721
-- metadata.labels on each HPA: mlops.in/initiative-name: mlops-ai-agent-system, mlops.in/team-name: core-platform, mlops.in/component: <service-name>-hpa, mlops.in/component-type: agent (for api HPA) or gateway (for frontend HPA)
+- metadata.labels on each HPA: mlops.in/initiative-name: mlops-ai-agent-system, mlops.in/team-name: core-platform, mlops.in/component: __SERVICE_SLUG__-hpa, mlops.in/component-type: agent (for api HPA) or gateway (for frontend HPA)
 - minReplicas: 2, maxReplicas: 10
 - CPU-based scaling at 70% average utilization
 
@@ -189,7 +189,7 @@ Rules:
 - Do NOT use Helm template syntax — no {{ }} directives anywhere
 - All values must be hardcoded directly in the manifests (this is for direct kubectl apply)
 - Namespace MUST be mlops-1775309721 in every resource metadata
-- Image names MUST be europe-west4-docker.pkg.dev/ingka-genai-platform-dev/genai-platform/harness-demo-api:latest and europe-west4-docker.pkg.dev/ingka-genai-platform-dev/genai-platform/harness-demo-frontend:latest
+- Image names MUST be europe-west4-docker.pkg.dev/ingka-genai-platform-dev/genai-platform/__SERVICE_SLUG__-api:latest and europe-west4-docker.pkg.dev/ingka-genai-platform-dev/genai-platform/__SERVICE_SLUG__-frontend:latest
 - Every resource metadata.labels MUST include these four mlops.in labels: mlops.in/initiative-name: mlops-ai-agent-system, mlops.in/team-name: core-platform, mlops.in/component: <resource-name>, mlops.in/component-type: agent (for api resources) | gateway (for frontend/ingress resources) | mcp-server (for configmap/secret resources)
 - Produce valid, deployable YAML that passes kubectl apply --dry-run=client
 - Both services (API + Frontend) must be included`,
@@ -416,7 +416,7 @@ For each service (api, frontend), create and run a Kaniko build Job:
              image: gcr.io/kaniko-project/executor:latest
              args:
                - "--context=dir:///workspace"
-               - "--destination=europe-west4-docker.pkg.dev/ingka-genai-platform-dev/genai-platform/harness-demo-<service>:latest"
+               - "--destination=europe-west4-docker.pkg.dev/ingka-genai-platform-dev/genai-platform/__SERVICE_SLUG__-<service>:latest"
                - "--cache=true"
                - "--cache-repo=europe-west4-docker.pkg.dev/ingka-genai-platform-dev/genai-platform/cache"
              volumeMounts:

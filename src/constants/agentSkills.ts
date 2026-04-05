@@ -368,8 +368,8 @@ export const DEVOPS_SKILL = `## DevOps — Deploy Agent Skill (Kubernetes + Kani
 | Job deadline exceeded | \`kubectl logs job/<name> -c kaniko\` | Increase timeout, check Dockerfile |
 
 ### Image Naming Convention
-- API: \`europe-west4-docker.pkg.dev/ingka-genai-platform-dev/genai-platform/harness-demo-api:latest\`
-- Frontend: \`europe-west4-docker.pkg.dev/ingka-genai-platform-dev/genai-platform/harness-demo-frontend:latest\`
+- API: \`europe-west4-docker.pkg.dev/ingka-genai-platform-dev/genai-platform/__SERVICE_SLUG__-api:latest\`
+- Frontend: \`europe-west4-docker.pkg.dev/ingka-genai-platform-dev/genai-platform/__SERVICE_SLUG__-frontend:latest\`
 
 ### Cleanup Protocol
 Always clean up after operations:

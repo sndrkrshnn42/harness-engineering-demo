@@ -9,6 +9,28 @@ const MAX_TOKENS = 2048;
 const INTER_STAGE_DELAY_MS = 600;
 const MAX_TOOL_ITERATIONS = 10;
 
+/**
+ * Derives a DNS-safe slug from the user's prompt for unique Docker image and K8s resource naming.
+ * Examples: "Build a snake game" → "snake-game", "Create a 2048 puzzle app" → "2048-puzzle-app"
+ */
+function deriveServiceSlug(prompt: string): string {
+  const STOP_WORDS = new Set([
+    'a', 'an', 'the', 'for', 'and', 'or', 'to', 'of', 'in', 'on', 'at',
+    'by', 'my', 'our', 'me', 'i', 'we', 'you', 'it', 'is', 'are', 'was',
+    'be', 'been', 'being', 'have', 'has', 'do', 'does', 'did', 'will',
+    'would', 'could', 'should', 'may', 'might', 'can', 'shall',
+    'build', 'create', 'make', 'develop', 'generate', 'write', 'implement',
+    'design', 'please', 'want', 'need', 'like', 'with', 'using', 'that',
+    'this', 'which', 'from', 'into', 'about',
+  ]);
+  const words = prompt.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/)
+    .filter(w => w.length > 0 && !STOP_WORDS.has(w)).slice(0, 4);
+  let slug = words.join('-') || 'app';
+  if (/^[^a-z]/.test(slug)) slug = 'app-' + slug;
+  slug = slug.slice(0, 40).replace(/[^a-z0-9]+$/, '').replace(/-{2,}/g, '-');
+  return slug || 'app';
+}
+
 // ─── Agent File Type (exported for FileTree component) ──────────────────────
 
 export interface AgentFile {
@@ -421,12 +443,15 @@ export function usePipeline(inputSpec: string, codegenMode: CodegenMode, patToke
    */
   const streamStage = useCallback(async (
     stageId: StageId,
-    userMessage: string
+    userMessage: string,
+    serviceSlug: string
   ): Promise<string> => {
     const stageStart = Date.now();
     dispatch({ type: 'STAGE_START', stageId });
 
     abortRef.current = new AbortController();
+
+    const systemPrompt = SYSTEM_PROMPTS[stageId].replace(/__SERVICE_SLUG__/g, serviceSlug);
 
     const response = await fetch(INFERENCE_PATH, {
       method: 'POST',
@@ -439,7 +464,7 @@ export function usePipeline(inputSpec: string, codegenMode: CodegenMode, patToke
         max_tokens: MAX_TOKENS,
         stream: true,
         messages: [
-          { role: 'system', content: SYSTEM_PROMPTS[stageId] },
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage },
         ],
       }),
@@ -930,7 +955,8 @@ export function usePipeline(inputSpec: string, codegenMode: CodegenMode, patToke
   const streamStageDeployAgent = useCallback(async (
     stageId: StageId,
     userMessage: string,
-    workspaceId: string
+    workspaceId: string,
+    serviceSlug: string
   ): Promise<string> => {
     const stageStart = Date.now();
     dispatch({ type: 'STAGE_START', stageId });
@@ -944,7 +970,7 @@ export function usePipeline(inputSpec: string, codegenMode: CodegenMode, patToke
 
     // Build the deploy prompt: system instructions + context from prior stages
     const deployPrompt =
-      `System Instructions:\n${DEVOPS_DEPLOY_PROMPT}\n\n` +
+      `System Instructions:\n${DEVOPS_DEPLOY_PROMPT.replace(/__SERVICE_SLUG__/g, serviceSlug)}\n\n` +
       `---\n\n${userMessage}`;
 
     const response = await fetch('/api/deploy', {
@@ -1156,6 +1182,7 @@ export function usePipeline(inputSpec: string, codegenMode: CodegenMode, patToke
     }
 
     const pipelineStart = Date.now();
+    const serviceSlug = deriveServiceSlug(inputSpec);
 
     for (const def of STAGE_DEFINITIONS) {
       if (def.id > 1) {
@@ -1176,10 +1203,10 @@ export function usePipeline(inputSpec: string, codegenMode: CodegenMode, patToke
           output = await pushToGit(def.id, workspaceId);
         } else if (def.id === 5 && workspaceId) {
           // Stage 5: DevOps Agent — Docker Build & Deploy (OpenCode SDK)
-          output = await streamStageDeployAgent(def.id, userMessage, workspaceId);
+          output = await streamStageDeployAgent(def.id, userMessage, workspaceId, serviceSlug);
         } else {
           // Stages 1, 3, 6, 7: Standard LLM streaming
-          output = await streamStage(def.id, userMessage);
+          output = await streamStage(def.id, userMessage, serviceSlug);
         }
 
         // Post-process Stage 3: parse # FILE markers and write K8s manifest files to workspace
@@ -1201,7 +1228,7 @@ export function usePipeline(inputSpec: string, codegenMode: CodegenMode, patToke
 
     const totalElapsedMs = Date.now() - pipelineStart;
     dispatch({ type: 'PIPELINE_COMPLETE', totalElapsedMs });
-  }, [buildUserMessage, streamStage, streamStageAgentic, streamStageOpenCode, pushToGit, streamStageDeployAgent, codegenMode]);
+  }, [buildUserMessage, streamStage, streamStageAgentic, streamStageOpenCode, pushToGit, streamStageDeployAgent, codegenMode, inputSpec]);
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
