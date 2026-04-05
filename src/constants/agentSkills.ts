@@ -12,9 +12,10 @@ export const ADRIAN_SKILL = `## Adrian — API Agent Skill (FastAPI Python)
 
 ### Project Structure
 \`\`\`
+pyproject.toml          — Poetry project config with all dependencies
+poetry.lock             — Locked dependency versions (auto-generated)
 main.py                 — FastAPI app entry point with CORS, middleware, lifespan
-requirements.txt        — Pinned dependencies
-Dockerfile              — Production Docker image
+Dockerfile              — Production Docker image (Poetry-based install)
 .env.example            — Environment variable placeholders
 app/
   __init__.py
@@ -72,26 +73,37 @@ tests/
 \`\`\`dockerfile
 FROM python:3.11-slim
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir poetry && poetry config virtualenvs.create false
+COPY pyproject.toml poetry.lock ./
+RUN poetry install --no-interaction --no-ansi --only main
 COPY . .
 EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 \`\`\`
 
-### Requirements (minimum)
-\`\`\`
-fastapi>=0.115.0
-uvicorn[standard]>=0.30.0
-pydantic>=2.9.0
-pydantic-settings>=2.5.0
-sqlalchemy[asyncio]>=2.0.0
-alembic>=1.13.0
-httpx>=0.27.0
-structlog>=24.0.0
-python-jose[cryptography]>=3.3.0
-pytest>=8.0.0
-pytest-asyncio>=0.24.0
+### Dependencies (managed via Poetry — pyproject.toml)
+\`\`\`toml
+[tool.poetry]
+name = "app"
+version = "0.1.0"
+description = ""
+authors = ["Adrian <adrian@ingka.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = ">=0.115.0"
+uvicorn = {version = ">=0.30.0", extras = ["standard"]}
+pydantic = ">=2.9.0"
+pydantic-settings = ">=2.5.0"
+sqlalchemy = {version = ">=2.0.0", extras = ["asyncio"]}
+alembic = ">=1.13.0"
+httpx = ">=0.27.0"
+structlog = ">=24.0.0"
+python-jose = {version = ">=3.3.0", extras = ["cryptography"]}
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.0.0"
+pytest-asyncio = ">=0.24.0"
 \`\`\`
 `;
 

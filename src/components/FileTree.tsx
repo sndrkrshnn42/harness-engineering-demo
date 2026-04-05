@@ -212,7 +212,7 @@ function DirNode({
         open
         subtle
       >
-        <div style={{ paddingLeft: node.depth > 0 ? '1rem' : undefined }}>
+        <div style={{ paddingLeft: '1rem' }}>
         {/* Nested directories first */}
         {dirs.map(child => (
           <DirNode

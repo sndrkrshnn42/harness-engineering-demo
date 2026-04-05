@@ -298,9 +298,9 @@ ${ADRIAN_SKILL}
 4. Generate a comprehensive pytest test suite in \`tests/\`
 5. Generate the Dockerfile as \`Dockerfile\` in the current directory
 6. After generating all files, run these verification steps:
-   - \`pip install -r requirements.txt\`
+   - \`poetry install --no-interaction\`
    - \`python -c "from main import app; print('FastAPI app loads OK')"\`
-   - \`python -m pytest --tb=short -q\`
+   - \`poetry run pytest --tb=short -q\`
 7. If any verification step fails, fix the issues and re-run
 
 ## Rules
@@ -310,7 +310,7 @@ ${ADRIAN_SKILL}
 - Create each file using your file-writing tools
 - Do not ask for clarification — infer from the requirements
 - IMPORTANT: Your session is scoped to api/ — write files at the current directory root, NOT inside an api/ subdirectory
-- Begin immediately. Create files in this order: requirements.txt → config → models → schemas → routes → middleware → main.py → tests → Dockerfile`;
+- Begin immediately. Create files in this order: pyproject.toml → config → models → schemas → routes → middleware → main.py → tests → Dockerfile`;
 
 
 /**
